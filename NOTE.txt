@@ -1,0 +1,70 @@
+gcc -Wall -Wextra main.c -o main  -lncurses
+ ./main
+
+make
+    ./build/server
+    make clean
+
+rm -rf build server
+    gcc -Wall -Wextra -g -Iinclude \
+    src/server.c src/map.c src/process_input.c src/process_drone.c \
+    -lncurses -o server
+        ./server
+
+ARP-Project/
+    │── src/
+    │   ├── server_test.c
+    │   ├── ncurses_test.c
+    │   ├── watchdog_test.c
+    │   └── pipes_test.c
+    │── include/
+    │── build/
+    │── Makefile
+    │── params.txt
+
+    ARP/
+    │
+    ├── Makefile
+    ├── build/                 # contiene gli eseguibili compilati
+    │
+    ├── src/
+    │   ├── server.c
+    │   ├── map.c
+    │   ├── process_input.c
+    │   ├── process_drone.c
+    │   ├── watchdog.c     (nel day3/4)
+    │   ├── config.c        (dal day3)
+    │   ├── world.c         (dal day3/4)
+    │   └── ipc.c           (shared memory, semafori - day3)
+    │
+    └── include/
+        ├── map.h
+        ├── process_input.h
+        ├── process_drone.h
+        ├── watchdog.h      (day3)
+        ├── config.h        (day3)
+        ├── world.h         (day3/4)
+        └── ipc.h           (day3)
+
+CONFIG - MAP - SERVER
+    map.c       → modulo grafico (GUI) -> si occupa solo della finestra
+    map.h       → interfaccia pubblica del modulo grafico
+
+    config.c    → parser del file config -> legge parametri
+    config.h    → interfaccia del parser (struttura Parametri + load_config)
+
+    server.c    → gestisce tutti i processi + blackboard
+
+FASE 1
+    /project
+    │
+    ├── server.c
+    ├── map.c
+    ├── map.h
+    ├── process_input.c
+    ├── process_input.h
+    ├── process_drone.c
+    ├── process_drone.h
+    └── Makefile  
+
+
