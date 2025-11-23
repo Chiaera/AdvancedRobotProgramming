@@ -13,20 +13,25 @@ void set_input(int fd){
 
     while(1){
         int ch = getch();
-        msgInput msg = {'I', 0, 0};
+        if (ch == ERR) {        
+            usleep(20000);
+            continue;            
+        }
 
-        if(ch == 'w') { msg.dx = -1; msg.dy = -1; }
-        if(ch == 'e') { msg.dx =  0; msg.dy = -1; }
-        if(ch == 'r') { msg.dx = +1; msg.dy = -1; }
-        if(ch == 's') { msg.dx = -1; msg.dy =  0; }
-        if(ch == 'd') { msg.dx =  0; msg.dy =  0; }
-        if(ch == 'f') { msg.dx = +1; msg.dy =  0; }
-        if(ch == 'x') { msg.dx = -1; msg.dy = +1; }
-        if(ch == 'c') { msg.dx =  0; msg.dy = +1; }
-        if(ch == 'v') { msg.dx = +1; msg.dy = +1; }
-        if (ch == 'q') {
-            msgInput msg = {'Q', 0, 0};
-            write(fd, &msg, sizeof(msg));
+        msgInput msg = {'I', 0, 0};
+        if(ch == 'w' || ch=='W') { msg.dx = -1; msg.dy = -1; }
+        if(ch == 'e' || ch=='E') { msg.dx =  0; msg.dy = -1; }
+        if(ch == 'r' || ch=='R') { msg.dx = +1; msg.dy = -1; }
+        if(ch == 's' || ch=='S') { msg.dx = -1; msg.dy =  0; }
+        if(ch == 'd' || ch=='D') { msg.dx =  0; msg.dy =  0; }
+        if(ch == 'f' || ch=='F') { msg.dx = +1; msg.dy =  0; }
+        if(ch == 'x' || ch=='X') { msg.dx = -1; msg.dy = +1; }
+        if(ch == 'c' || ch=='C') { msg.dx =  0; msg.dy = +1; }
+        if(ch == 'v' || ch=='V') { msg.dx = +1; msg.dy = +1; }
+        
+        if(ch == 'q' || ch == 'Q') {
+            msgInput quit_msg = {'Q', 0, 0};
+            write(fd, &quit_msg, sizeof(quit_msg));
             break; 
         }
         
