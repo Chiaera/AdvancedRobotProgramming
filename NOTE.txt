@@ -66,25 +66,9 @@ FASE 1
     ├── process_drone.h
     └── Makefile  
 
-
-move_drone(filgio) - pipe_drone(pipe padre-figlio) - select(server)
-    Il tuo programma server fa tre cose:
-    1. crea 2 pipe:
-        - pipe_input (per ricevere messaggi dal processo input),
-        - pipe_drone (per ricevere messaggi dal processo drone);
-    2. fa 2 fork():
-        - uno crea il processo input (legge tasti e manda dx/dy);
-        - l’altro crea il processo drone (manda un tick ogni 20ms);
-    3. il processo padre (server) entra in un loop con:
-        - select()
-        - e poi legge dai due file descriptor (pipe_input[0], pipe_drone[0]).
-
-    move: manda messaggio 'click' ogni 20ms a server "Ei server aggiorna fisica"
-    pipe: 'tubatura' che collega drone(che scrive) - server(che legge)
-    server: legge pipe_input(tasto premuto (“I”, dx dy)) e drone(tick (“D” ogni 20ms))
-
-    QUINDI
-        move_drone = genera tick 'D'
-        pipe_drone = trasporta il tick al server
-        select() = notifica al server che è arrivato il tick
-        server = calcola fisica ad ogni tick
+GITHUB
+    git add . (. or nameFile)
+    git commit -m "message of commit"
+    git push -u origin main
+        IF it doesn't work because something in the main is changed:
+            git pull --rebase origin main
