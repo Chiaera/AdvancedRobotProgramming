@@ -1,7 +1,7 @@
 #include <unistd.h>
 #include <ncurses.h>
 
-#include "process_input.h"
+#include "input.h"
 
 typedef struct {
     char type;

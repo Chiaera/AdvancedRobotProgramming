@@ -10,8 +10,8 @@
 #include <time.h>
 
 #include "map.h"
-#include "process_input.h"
-#include "process_drone.h"
+#include "input.h"
+#include "drone.h"
 
 
 typedef struct {

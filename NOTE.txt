@@ -7,7 +7,7 @@ make
 
 rm -rf build server
     gcc -Wall -Wextra -g -Iinclude \
-    src/server.c src/map.c src/process_input.c src/process_drone.c \
+    src/server.c src/map.c src/input.c src/drone.c \
     -lncurses -o server
         ./server
 
@@ -16,8 +16,8 @@ assignment1/
     ├── src/
     │   ├── server.c
     │   ├── map.c
-    │   ├── process_input.c
-    │   ├── process_drone.c
+    │   ├── input.c
+    │   ├── drone.c
     │   ├── obstacles.c     (più avanti)
     │   ├── targets.c       (più avanti)
     │   ├── config.c        (più avanti)
@@ -25,8 +25,8 @@ assignment1/
     │
     ├── include/
     │   ├── map.h
-    │   ├── process_input.h
-    │   ├── process_drone.h
+    │   ├── input.h
+    │   ├── drone.h
     │   ├── obstacles.h
     │   ├── targets.h
     │   ├── config.h
@@ -60,15 +60,14 @@ FASE 1
     ├── server.c
     ├── map.c
     ├── map.h
-    ├── process_input.c
-    ├── process_input.h
-    ├── process_drone.c
-    ├── process_drone.h
+    ├── input.c
+    ├── input.h
+    ├── drone.c
+    ├── drone.h
     └── Makefile  
 
 GITHUB
     git add . (. or nameFile)
     git commit -m "message of commit"
     git push -u origin main
-        IF it doesn't work because something in the main is changed:
-            git pull --rebase origin main
+    
