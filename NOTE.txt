@@ -2,19 +2,19 @@ gcc -Wall -Wextra main.c -o main  -lncurses
  ./main
 
 make
-    ./build/server
+    ./build/blackboard
     make clean
 
-rm -rf build server
+rm -rf build blackboard
     gcc -Wall -Wextra -g -Iinclude \
-    src/server.c src/map.c src/input.c src/drone.c \
-    -lncurses -o server
-        ./server
+    src/blackboard.c src/map.c src/input.c src/drone.c \
+    -lncurses -o blackboard
+        ./blackboard
 
 assignment1/
     │
     ├── src/
-    │   ├── server.c
+    │   ├── blackboard.c
     │   ├── map.c
     │   ├── input.c
     │   ├── drone.c
@@ -45,19 +45,19 @@ assignment1/
 
 
 
-CONFIG - MAP - SERVER
+CONFIG - MAP - blackboard
     map.c       → modulo grafico (GUI) -> si occupa solo della finestra
     map.h       → interfaccia pubblica del modulo grafico
 
     config.c    → parser del file config -> legge parametri
     config.h    → interfaccia del parser (struttura Parametri + load_config)
 
-    server.c    → gestisce tutti i processi + blackboard
+    blackboard.c    → gestisce tutti i processi + blackboard
 
 FASE 1
     /project
     │
-    ├── server.c
+    ├── blackboard.c
     ├── map.c
     ├── map.h
     ├── input.c

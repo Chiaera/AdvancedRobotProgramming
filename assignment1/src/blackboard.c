@@ -10,8 +10,8 @@
 #include <time.h>
 
 #include "map.h"
-#include "input.h"
-#include "drone.h"
+#include "process_input.h"
+#include "process_drone.h"
 
 
 typedef struct {
@@ -156,7 +156,7 @@ int main()
             read(pipe_input[0], &m, sizeof(m));
 
             if (m.type == 'Q') break;
-            if (m.type == 'I') {
+            else if (m.type == 'I') {
                 gs.fx_cmd += gs.command_force * m.dx;  
                 gs.fy_cmd += gs.command_force * m.dy;
 
@@ -164,6 +164,14 @@ int main()
                 if (gs.fx_cmd < -gs.max_force) gs.fx_cmd = -gs.max_force;
                 if (gs.fy_cmd > gs.max_force) gs.fy_cmd = gs.max_force;
                 if (gs.fy_cmd < -gs.max_force) gs.fy_cmd = -gs.max_force;
+            }
+            else if (m.type == 'B') {
+                const double brake_factor = 0.5;
+
+                gs.fx_cmd *= brake_factor;
+                gs.fy_cmd *= brake_factor;
+                gs.drone.vx *= brake_factor;
+                gs.drone.vy *= brake_factor;
             }
         }
 

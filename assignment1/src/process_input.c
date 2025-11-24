@@ -1,7 +1,7 @@
 #include <unistd.h>
 #include <ncurses.h>
 
-#include "input.h"
+#include "process_input.h"
 
 typedef struct {
     char type;
@@ -23,7 +23,7 @@ void set_input(int fd){
         if(ch == 'e' || ch=='E') { msg.dx =  0; msg.dy = -1; }
         if(ch == 'r' || ch=='R') { msg.dx = +1; msg.dy = -1; }
         if(ch == 's' || ch=='S') { msg.dx = -1; msg.dy =  0; }
-        if(ch == 'd' || ch=='D') { msg.dx =  0; msg.dy =  0; }
+        if(ch == 'd' || ch=='D') { msg.type = 'B'; } //brake
         if(ch == 'f' || ch=='F') { msg.dx = +1; msg.dy =  0; }
         if(ch == 'x' || ch=='X') { msg.dx = -1; msg.dy = +1; }
         if(ch == 'c' || ch=='C') { msg.dx =  0; msg.dy = +1; }
