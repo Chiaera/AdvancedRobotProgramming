@@ -41,6 +41,11 @@ typedef struct {
     double command_force; 
     double fx_cmd; 
     double fy_cmd; 
+    double max_force;
+
+    //window size
+    int world_width;
+    int world_height;
 
     //obstacles
     int num_obstacles;
@@ -61,6 +66,11 @@ typedef struct {
     double k;
     double dt;
     double command_force;
+    double max_force;
+
+    //window size
+    int world_width;
+    int world_height;
 
     //drone
     int drone_start_x;
@@ -79,8 +89,8 @@ typedef struct {
 //------------------------------------------------------------------------FUNCTIONS
 
 void init_screen(Screen *s);
-void refresh_screen(Screen *s, GameState *g);
-void init_game(GameState *g, Screen *s, Config *cfg);
+void refresh_screen(Screen *s);
+void init_game(GameState *g, Config *cfg);
 void render(Screen *s, GameState *g);
 
 #endif

@@ -2,6 +2,7 @@
 
 #include <string.h>
 #include <stdlib.h>
+#include <math.h>
 
 
 WINDOW *create_newwin(int height, int width, int starty, int startx) {
@@ -28,7 +29,7 @@ void init_screen(Screen*s){
 }
 
 // resize and border
-void refresh_screen(Screen *s, GameState *g) {
+void refresh_screen(Screen *s) {
     s->height = LINES-2;
     s->width  = COLS-2;
 
@@ -38,14 +39,11 @@ void refresh_screen(Screen *s, GameState *g) {
     mvprintw(0, 0, "Press keys (w e r s d f x c v), q = quit");
     clrtoeol();   
     refresh();
-
-    if (g->drone.x >= s->width-1) g->drone.x = s->width-2;
-    if (g->drone.y >= s->height-1) g->drone.y = s->height-2;
 }
 
 
 // setting the game to the zero state
-void init_game(GameState *g, Screen *s, Config *cfg){
+void init_game(GameState *g, Config *cfg){
 
     memset(g, 0, sizeof(GameState));
     
@@ -54,14 +52,19 @@ void init_game(GameState *g, Screen *s, Config *cfg){
     g->k = cfg->k;
     g->dt = cfg->dt;
     g->command_force = cfg->command_force;
-    g->fx_cmd = 0.0;
-    g->fy_cmd = 0.0;
+    g->fx_cmd = 0;
+    g->fy_cmd = 0;
+    g->max_force = cfg->max_force;
+
+    //size
+    g->world_width  = cfg->world_width;
+    g->world_height = cfg->world_height;
 
     // drone 
     g->drone.ch = '+';
     if (cfg->drone_start_x == 0 && cfg->drone_start_y == 0) {
-        g->drone.x = s->width / 2;
-        g->drone.y = s->height / 2;
+        g->drone.x = g->world_width/2;
+        g->drone.y = g->world_height/2;
     } else {
         g->drone.x = cfg->drone_start_x;
         g->drone.y = cfg->drone_start_y;
@@ -74,8 +77,8 @@ void init_game(GameState *g, Screen *s, Config *cfg){
         int tx, ty;
         int valid_position_target = 0;
         while (!valid_position_target) {
-            tx = 1 + rand() % (s->width-2);
-            ty = 1 + rand() % (s->height-2);
+            tx = rand() % g->world_width;
+            ty = rand() % g->world_height;
             if (tx == g->drone.x && ty == g->drone.y) continue;
             valid_position_target = 1;
         }
@@ -93,8 +96,8 @@ void init_game(GameState *g, Screen *s, Config *cfg){
         int obstacle_x, obstacle_y;
         int valid_position_obstacle = 0;
         while (!valid_position_obstacle) {
-            obstacle_x = 1 + rand() % (s->width-2);
-            obstacle_y = 1 + rand() % (s->height-2);
+            obstacle_x = rand() % g->world_width;
+            obstacle_y = rand() % g->world_height;
             if (obstacle_x==g->drone.x && obstacle_y==g->drone.y) continue;
             if (obstacle_x==g->target_x && obstacle_y==g->target_y) continue;
             int another_obstacle = 0;
@@ -115,26 +118,47 @@ void init_game(GameState *g, Screen *s, Config *cfg){
     g->score = 0;
 }
 
-// clear window and config the border as obstacles
+//clear window
 void render(Screen *s, GameState *g){
     werase(s->win);
     box(s->win, 0, 0);
 
     mvwprintw(s->win, 0, 2, "Score: %d", g->score);
 
-    //target
-    mvwaddch(s->win, g->target_y, g->target_x, 'T');
+    double sx = 1.0, sy = 1.0;
+    if (g->world_width  > 1)
+        sx = (double)(s->width  - 2) / (g->world_width  - 1);
+    if (g->world_height > 1)
+        sy = (double)(s->height - 2) / (g->world_height - 1);
 
-    //obstacles
+    // target
+    int tx = 1 + (int)round(g->target_x * sx);
+    int ty = 1 + (int)round(g->target_y * sy);
+    if (tx < 1) tx = 1;
+    if (tx > s->width-2) tx = s->width-2;
+    if (ty < 1) ty = 1;
+    if (ty > s->height-2) ty = s->height-2;
+    mvwaddch(s->win, ty, tx, 'T');
+
+    // ostacoli
     for (int i = 0; i < g->num_obstacles; i++) {
-    int obstacle_x = g->obstacles[i].x;
-    int obstacle_y = g->obstacles[i].y;
-
-    if (obstacle_x>0 && obstacle_x<s->width-1 && obstacle_y>0 && obstacle_y<s->height-1) {
-        mvwaddch(s->win, obstacle_y, obstacle_x, 'O');  
+        int ox = 1 + (int)round(g->obstacles[i].x * sx);
+        int oy = 1 + (int)round(g->obstacles[i].y * sy);
+        if (ox < 1) ox = 1;
+        if (ox > s->width-2) ox = s->width-2;
+        if (oy < 1) oy = 1;
+        if (oy > s->height-2) oy = s->height-2;
+        mvwaddch(s->win, oy, ox, 'O');
     }
-}
-    mvwaddch(s->win, g->drone.y, g->drone.x, g->drone.ch);
+
+    // drone
+    int dx = 1 + (int)round(g->drone.x * sx);
+    int dy = 1 + (int)round(g->drone.y * sy);
+    if (dx < 1) dx = 1;
+    if (dx > s->width-2) dx = s->width-2;
+    if (dy < 1) dy = 1;
+    if (dy > s->height-2) dy = s->height-2;
+    mvwaddch(s->win, dy, dx, g->drone.ch);
 
     wrefresh(s->win);
 }
