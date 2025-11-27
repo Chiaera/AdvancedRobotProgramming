@@ -1,4 +1,6 @@
 #include <unistd.h>
+#include <stdlib.h>
+#include <stdio.h>
 #include <ncurses.h>
 
 #include "process_input.h"
@@ -38,4 +40,28 @@ void set_input(int fd){
         write(fd, &msg, sizeof(msg));
         usleep(20000);
     }
+}
+
+
+int main(int argc, char *argv[])
+{
+    if (argc < 2) {
+        fprintf(stderr, "Usage: %s <write_fd>\n", argv[0]);
+        return 1;
+    }
+
+    int fd = atoi(argv[1]);
+
+    initscr();
+    noecho();
+    curs_set(0);
+
+    mvprintw(0, 0, "Input window: use w e r s d f x c v, q=quit");
+    refresh();
+
+    set_input(fd);
+
+    endwin();
+    close(fd);
+    return 0;
 }

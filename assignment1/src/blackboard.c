@@ -10,8 +10,7 @@
 #include <time.h>
 
 #include "map.h"
-#include "process_input.h"
-#include "process_drone.h"
+#include "world.h"
 
 
 typedef struct {
@@ -24,6 +23,18 @@ typedef struct  {
     int x, y;
 } msgDrone;
 
+typedef struct {
+    char type;
+    int num;
+    Target targets[MAX_TARGETS];
+} msgTargets;
+
+typedef struct  {
+    char type;
+    int num;
+    Obstacle obstacles[MAX_OBSTACLES];
+} msgObstacles;
+
 
 // read Config file
 static void load_config(const char *path, Config *cfg) {
@@ -31,18 +42,22 @@ static void load_config(const char *path, Config *cfg) {
     memset(cfg, 0, sizeof(Config));
 
     //default value
+    cfg->world_width  = 100;  
+    cfg->world_height = 30;
+
     cfg->mass = 1.0;
     cfg->k = 1.0;
     cfg->dt = 0.1;
     cfg->command_force = 10.0;
+    cfg->max_force = 50;
+
     cfg->drone_start_x = 0;
     cfg->drone_start_y = 0;
-    cfg->target_x = 0;
-    cfg->target_y = 0;
+
+    cfg->num_targets = 0;
+
     cfg->num_obstacles = 0;
-    cfg->world_width  = 100;  
-    cfg->world_height = 30;
-    cfg->max_force = 50;
+    
 
     //debug
     FILE *f = fopen(path, "r");
@@ -58,34 +73,26 @@ static void load_config(const char *path, Config *cfg) {
         char key[128], value[128];
 
         if (sscanf(line, "%127[^=]=%127s", key, value) == 2) {
+            //size
+            if (!strcmp(key, "WORLD_WIDTH"))  cfg->world_width  = atoi(value);
+            else if (!strcmp(key, "WORLD_HEIGHT")) cfg->world_height = atoi(value);
+
             //physics
-            if (!strcmp(key, "MASS")) cfg->mass = atof(value);
+            else if (!strcmp(key, "MASS")) cfg->mass = atof(value);
             else if (!strcmp(key, "K")) cfg->k = atof(value);
             else if (!strcmp(key, "DT")) cfg->dt = atof(value);
             else if (!strcmp(key, "COMMAND_FORCE")) cfg->command_force = atof(value);
+            else if (!strcmp(key, "MAX_FORCE")) cfg->max_force = atof(value);
 
             //drone
             else if (!strcmp(key, "DRONE_START_X")) cfg->drone_start_x = atoi(value);
             else if (!strcmp(key, "DRONE_START_Y")) cfg->drone_start_y = atoi(value);
 
             //target
-            else if (!strcmp(key, "TARGET_X")) cfg->target_x = atoi(value);
-            else if (!strcmp(key, "TARGET_Y")) cfg->target_y = atoi(value);
+            else if (!strcmp(key, "NUM_TARGETS")) cfg->num_targets = atoi(value);
 
             //obstacles
             else if (!strcmp(key, "NUM_OBSTACLES")) cfg->num_obstacles = atoi(value);
-            else if (strncmp(key, "OBSTACLE", 8) == 0) {
-                int index;
-                char axis;
-                if (sscanf(key, "OBSTACLE%d_%c", &index, &axis) == 2) {
-                    if (axis == 'X') cfg->obstacle_x[index] = atoi(value);
-                    if (axis == 'Y') cfg->obstacle_y[index] = atoi(value);
-                }
-            }
-
-            //size
-            else if (!strcmp(key, "WORLD_WIDTH"))  cfg->world_width  = atoi(value);
-            else if (!strcmp(key, "WORLD_HEIGHT")) cfg->world_height = atoi(value);
         }
     }
 
@@ -118,28 +125,131 @@ int main()
     // pipe
     int pipe_input[2];
     int pipe_drone[2];
+    int pipe_obstacles[2];
+    int pipe_targets[2];
     pipe(pipe_input);
     pipe(pipe_drone);
+    pipe(pipe_obstacles);
+    pipe(pipe_targets);
 
+    // FORK ----------------------------------------------------------
     // input
     pid_t pid_input = fork();
     if(pid_input == 0){
-        close(pipe_input[0]);
-        set_input(pipe_input[1]);
-        exit(0);
+        close(pipe_input[0]); 
+        char fd_str[16];
+        snprintf(fd_str, sizeof(fd_str), "%d", pipe_input[1]);
+        execlp("konsole",
+            "konsole",
+            "-e",
+            "./build/bin/process_input",
+            fd_str,
+            (char *)NULL);
+        perror("execlp process_input failed");
+        exit(1);
     }
 
     // drone
     pid_t pid_drone = fork();
     if(pid_drone == 0){
-        close(pipe_drone[0]);
-        move_drone(pipe_drone[1]);
-        exit(0);
+        char fd_str[16];
+        snprintf(fd_str, sizeof(fd_str), "%d", pipe_drone[1]);
+        execlp(//"konsole", "konsole", "-e",
+            "./build/bin/process_drone", "./build/bin/process_drone",
+            fd_str,
+            (char *)NULL);
+        perror("execlp process_drone failed");
+        exit(1);
     }
 
+    // target
+    pid_t pid_targets = fork();
+    if (pid_targets == 0) {
+        close(pipe_targets[0]);
+        char fd_str[16];
+        snprintf(fd_str, sizeof(fd_str), "%d", pipe_targets[1]);
+        execlp("konsole",
+            "konsole",
+            "-e",
+            "./build/bin/process_targets",  // o come lo chiami nel Makefile
+            fd_str,
+            (char *)NULL);
+        perror("execlp process_targets failed");
+        exit(1);
+    }
+    
+    // obstacles
+    pid_t pid_obstacles = fork();
+    if(pid_obstacles == 0){
+        char fd_str[16];
+        snprintf(fd_str, sizeof(fd_str), "%d", pipe_obstacles[1]);
+        execlp("konsole",
+            "konsole",
+            "-e",
+            "./build/bin/process_obstacles",
+            fd_str,
+            (char *)NULL);
+        perror("execlp process_obstacles failed");
+        exit(1);
+    }
+
+    //close write 
     close(pipe_input[1]);
     close(pipe_drone[1]);
+    close(pipe_obstacles[1]);
+    close(pipe_targets[1]);
 
+//------------------------------------------------------------------------------------------------
+
+    // messagge by process_obstacles
+    msgObstacles msg_obstacles;
+    ssize_t n = read(pipe_obstacles[0], &msg_obstacles, sizeof(msg_obstacles));
+    if (n == sizeof(msg_obstacles) && msg_obstacles.type == 'O') {
+        gs.num_obstacles = msg_obstacles.num;
+        if (gs.num_obstacles > MAX_OBSTACLES) gs.num_obstacles = MAX_OBSTACLES;
+
+        for (int i = 0; i < gs.num_obstacles; i++) {
+            gs.obstacles[i].x = msg_obstacles.obstacles[i].x;
+            gs.obstacles[i].y = msg_obstacles.obstacles[i].y;
+        }
+    } else {
+        gs.num_obstacles = 0;
+    }
+    // position check
+    for (int i = 0; i < gs.num_obstacles; i++) {
+        if (gs.obstacles[i].x == gs.drone.x && gs.obstacles[i].y == gs.drone.y) {
+            respawn_obstacle(&gs, i);
+        }
+    }
+    
+    // massage by process_targets 
+    msgTargets msg_t;
+    ssize_t nt = read(pipe_targets[0], &msg_t, sizeof(msg_t));
+    if (nt == sizeof(msg_t) && msg_t.type == 'T') {
+        gs.num_targets = msg_t.num;
+        if (gs.num_targets > MAX_TARGETS) gs.num_targets = MAX_TARGETS;
+
+        for (int i = 0; i < gs.num_targets; i++) {
+            gs.targets[i].x = msg_t.targets[i].x;
+            gs.targets[i].y = msg_t.targets[i].y;
+        }
+    } else {
+        gs.num_targets = 0;
+    }
+    close(pipe_targets[0]);
+    //position check
+    for (int i = 0; i < gs.num_targets; i++) {
+        int tx = gs.targets[i].x;
+        int ty = gs.targets[i].y;
+        for (int j = 0; j < gs.num_obstacles; j++) {
+            if (gs.obstacles[j].x == tx && gs.obstacles[j].y == ty) {
+                respawn_target(&gs, i);
+            }
+        }
+    }
+
+
+    // select
     fd_set set;
     int maxfd = (pipe_input[0] > pipe_drone[0] ? pipe_input[0] : pipe_drone[0]) + 1;
     
@@ -215,6 +325,9 @@ int main()
         mvprintw(0, 0, "M=%.2f fx=%.2f fy=%.2f vx=%.2f vy=%.2f  ", gs.mass, gs.fx_cmd, gs.fy_cmd, gs.drone.vx, gs.drone.vy);
         clrtoeol(); 
         refresh();
+
+        // drone - target collide 
+        drone_target_collide(&gs);
 
         render(&screen, &gs);
     }

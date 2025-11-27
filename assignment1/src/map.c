@@ -73,45 +73,17 @@ void init_game(GameState *g, Config *cfg){
     g->drone.vy = 0;
 
     // target
-    if (cfg->target_x == 0 && cfg->target_y == 0) {
-        int tx, ty;
-        int valid_position_target = 0;
-        while (!valid_position_target) {
-            tx = rand() % g->world_width;
-            ty = rand() % g->world_height;
-            if (tx == g->drone.x && ty == g->drone.y) continue;
-            valid_position_target = 1;
-        }
-        g->target_x = tx;
-        g->target_y = ty;
-    } else {
-        g->target_x = cfg->target_x;
-        g->target_y = cfg->target_y;
+    g->num_targets = 0;
+    for (int i = 0; i < MAX_TARGETS; i++) {
+        g->targets[i].x = 0;
+        g->targets[i].y = 0;
     }
 
     //obstacles
-    g->num_obstacles = cfg->num_obstacles;
-    if (g->num_obstacles > MAX_OBSTACLES) g->num_obstacles = MAX_OBSTACLES;
-    for (int i = 0; i < g->num_obstacles; i++) {
-        int obstacle_x, obstacle_y;
-        int valid_position_obstacle = 0;
-        while (!valid_position_obstacle) {
-            obstacle_x = rand() % g->world_width;
-            obstacle_y = rand() % g->world_height;
-            if (obstacle_x==g->drone.x && obstacle_y==g->drone.y) continue;
-            if (obstacle_x==g->target_x && obstacle_y==g->target_y) continue;
-            int another_obstacle = 0;
-            for (int j = 0; j < i; j++) {
-                if (g->obstacles[j].x==obstacle_x && g->obstacles[j].y==obstacle_y) {
-                    another_obstacle = 1;
-                    break;
-                }
-            }
-            if (another_obstacle) continue;
-            valid_position_obstacle = 1;
-        }
-        g->obstacles[i].x = obstacle_x;
-        g->obstacles[i].y = obstacle_y;
+    g->num_obstacles = 0;
+    for (int i = 0; i < MAX_OBSTACLES; i++) {
+        g->obstacles[i].x = 0;
+        g->obstacles[i].y = 0;
     }
 
     //score 
@@ -132,13 +104,15 @@ void render(Screen *s, GameState *g){
         sy = (double)(s->height - 2) / (g->world_height - 1);
 
     // target
-    int tx = 1 + (int)round(g->target_x * sx);
-    int ty = 1 + (int)round(g->target_y * sy);
-    if (tx < 1) tx = 1;
-    if (tx > s->width-2) tx = s->width-2;
-    if (ty < 1) ty = 1;
-    if (ty > s->height-2) ty = s->height-2;
-    mvwaddch(s->win, ty, tx, 'T');
+    for (int i = 0; i < g->num_targets; i++) {
+        int tx = 1 + (int)round(g->targets[i].x * sx);
+        int ty = 1 + (int)round(g->targets[i].y * sy);
+        if (tx < 1) tx = 1;
+        if (tx > s->width-2) tx = s->width-2;
+        if (ty < 1) ty = 1;
+        if (ty > s->height-2) ty = s->height-2;
+        mvwaddch(s->win, ty, tx, 'T');
+    }
 
     // ostacoli
     for (int i = 0; i < g->num_obstacles; i++) {

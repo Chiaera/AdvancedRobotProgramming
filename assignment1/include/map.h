@@ -2,6 +2,7 @@
 #define MAP_H
 
 #define MAX_OBSTACLES 20
+#define MAX_TARGETS 10
 
 #include <ncurses.h>
 
@@ -29,6 +30,12 @@ typedef struct {
 } Obstacle;
 
 
+//targets
+typedef struct {
+    int x, y;
+} Target;
+
+
 // Gamestate
 typedef struct {
     //drone
@@ -52,7 +59,8 @@ typedef struct {
     Obstacle obstacles[MAX_OBSTACLES];
 
     //target
-    int target_x, target_y;
+    int num_targets;
+    Target targets[MAX_TARGETS];
 
     //score
     int score;
@@ -77,13 +85,10 @@ typedef struct {
     int drone_start_y;
 
     //target
-    int target_x;
-    int target_y;
+    int num_targets;
 
     //obstacles
     int num_obstacles;
-    int obstacle_x[MAX_OBSTACLES];
-    int obstacle_y[MAX_OBSTACLES];
 } Config;
 
 //------------------------------------------------------------------------FUNCTIONS

@@ -1,16 +1,3 @@
-gcc -Wall -Wextra main.c -o main  -lncurses
- ./main
-
-make
-    ./build/blackboard
-    make clean
-
-rm -rf build blackboard
-    gcc -Wall -Wextra -g -Iinclude \
-    src/blackboard.c src/map.c src/input.c src/drone.c \
-    -lncurses -o blackboard
-        ./blackboard
-
 assignment1/
     │
     ├── src/
@@ -18,10 +5,9 @@ assignment1/
     │   ├── map.c
     │   ├── input.c
     │   ├── drone.c
-    │   ├── obstacles.c     (più avanti)
-    │   ├── targets.c       (più avanti)
-    │   ├── config.c        (più avanti)
-    │   └── world.c         (fisica - più avanti)
+    │   ├── obstacles.c     
+    │   ├── targets.c    
+    │   └── world.c        
     │
     ├── include/
     │   ├── map.h
@@ -29,21 +15,18 @@ assignment1/
     │   ├── drone.h
     │   ├── obstacles.h
     │   ├── targets.h
-    │   ├── config.h
     │   └── world.h
     │
     ├── bin/
     │   ├── parameters.cnf
-    │   ├── log.txt
-    │   └── runtime dumps (qualunque file generi)
+    │   ├── log.txt --> NON ANCORA
+    │   └── runtime dumps --> NON ANCORA
     │
     ├── build/
     │   ├── obj/     (file .o)
     │   └── bin/     (eseguibili finali)
     │
     └── Makefile
-
-
 
 CONFIG - MAP - blackboard
     map.c       → modulo grafico (GUI) -> si occupa solo della finestra
@@ -54,20 +37,19 @@ CONFIG - MAP - blackboard
 
     blackboard.c    → gestisce tutti i processi + blackboard
 
-FASE 1
-    /project
-    │
-    ├── blackboard.c
-    ├── map.c
-    ├── map.h
-    ├── input.c
-    ├── input.h
-    ├── drone.c
-    ├── drone.h
-    └── Makefile  
-
 GITHUB
     git add . (. or nameFile)
     git commit -m "message of commit"
     git push -u origin main
     
+COMPILE
+    make clear (r, .rf build)
+    make
+    make run
+
+DA FARE
+    - physics.h 
+    - forze repulsive
+    - verificare universalità path
+    - sistemare collisione drone-target 
+    - servirà  mai semaforo (?)
