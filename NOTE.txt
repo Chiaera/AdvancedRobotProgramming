@@ -48,7 +48,6 @@ COMPILE
     make run
 
 DA FARE
-    - physics.h 
     - forze repulsive
     - verificare universalità path
     - sistemare collisione drone-target 

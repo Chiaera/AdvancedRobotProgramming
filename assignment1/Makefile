@@ -18,7 +18,7 @@ OBSTACLES_PROCESS := $(BIN_DIR)/process_obstacles
 TARGET_PROCESS := $(BIN_DIR)/process_targets
 
 # src
-BLACKBOARD_SRC := src/blackboard.c src/map.c src/world.c
+BLACKBOARD_SRC := $(SRC_DIR)/blackboard.c $(SRC_DIR)/map.c $(SRC_DIR)/world.c $(SRC_DIR)/world_physics.c
 INPUT_SRC := $(SRC_DIR)/process_input.c
 DRONE_SRC := $(SRC_DIR)/process_drone.c
 OBSTACLES_SRC := $(SRC_DIR)/process_obstacles.c

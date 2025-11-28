@@ -11,6 +11,7 @@
 
 #include "map.h"
 #include "world.h"
+#include "world_physics.h"
 
 
 typedef struct {
@@ -260,55 +261,31 @@ int main()
 
         select(maxfd, &set, NULL, NULL, NULL);
 
-        // INPUT
+        // INPUT - direction
         if (FD_ISSET(pipe_input[0], &set)) {
             msgInput m;
             read(pipe_input[0], &m, sizeof(m));
 
             if (m.type == 'Q') break;
             else if (m.type == 'I') {
-                gs.fx_cmd += gs.command_force * m.dx;  
-                gs.fy_cmd += gs.command_force * m.dy;
-
-                if (gs.fx_cmd > gs.max_force) gs.fx_cmd = gs.max_force;
-                if (gs.fx_cmd < -gs.max_force) gs.fx_cmd = -gs.max_force;
-                if (gs.fy_cmd > gs.max_force) gs.fy_cmd = gs.max_force;
-                if (gs.fy_cmd < -gs.max_force) gs.fy_cmd = -gs.max_force;
+                int mx = m.dx;
+                int my = m.dy;
+                add_direction(&gs, mx, my);
             }
             else if (m.type == 'B') {
-                const double brake_factor = 0.5;
-
-                gs.fx_cmd *= brake_factor;
-                gs.fy_cmd *= brake_factor;
-                gs.drone.vx *= brake_factor;
-                gs.drone.vy *= brake_factor;
+                use_brake(&gs);
             }
         }
 
-        // DRONE
+        // DRONE - drone dynamics
         if(FD_ISSET(pipe_drone[0], &set)){
             msgDrone m;
             read(pipe_drone[0], &m, sizeof(m));
 
-            //resultant forces
-            double fx = gs.fx_cmd;
-            double fy = gs.fy_cmd;
-
-            // a = (F - k*v)/M
-            double ax = (fx - gs.k*gs.drone.vx) / gs.mass;
-            double ay = (fy - gs.k*gs.drone.vy) / gs.mass;
-
-            // v = a*dt
-            gs.drone.vx += ax*gs.dt;
-            gs.drone.vy += ay*gs.dt;
-
-            // Euler - position
-            double new_x = gs.drone.x + gs.drone.vx*gs.dt;
-            double new_y = gs.drone.y + gs.drone.vy*gs.dt;
-            gs.drone.x = (int)round(new_x);
-            gs.drone.y = (int)round(new_y);
+            add_drone_dynamics(&gs);
         }
 
+        //border
         if (gs.drone.x < 0) gs.drone.x = 0;
         if (gs.drone.y < 0) gs.drone.y = 0;
         if (gs.drone.x >= gs.world_width) gs.drone.x = gs.world_width - 1;
