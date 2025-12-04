@@ -19,8 +19,8 @@ typedef struct {
 // Drone struct
 typedef struct{
 	char ch;
-	int x,y; //(step)
-    double vx, vy; //(step/s)
+	double x,y;
+    double vx, vy; 
 } Drone;
 
 
@@ -45,10 +45,23 @@ typedef struct {
     double mass;
     double k;
     double dt;
+    
+    double rho;
+    double eta;
+    double zeta;
+    double tangent_gain;
+
     double command_force; 
     double fx_cmd; 
     double fy_cmd; 
     double max_force;
+    double fx_obst;
+    double fy_obst;
+    double fx_fence;
+    double fy_fence;
+    double fx_tot;
+    double fy_tot;
+
 
     //window size
     int world_width;
@@ -75,6 +88,11 @@ typedef struct {
     double dt;
     double command_force;
     double max_force;
+    double rho;
+    double eta;
+    double zeta;
+    double tangent_gain;
+
 
     //window size
     int world_width;

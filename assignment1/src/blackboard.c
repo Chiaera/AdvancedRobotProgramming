@@ -13,7 +13,7 @@
 #include "world.h"
 #include "world_physics.h"
 
-
+// --------------------------------------------------------------- STRUCT
 typedef struct {
     char type;
     int dx, dy;
@@ -41,25 +41,8 @@ typedef struct  {
 static void load_config(const char *path, Config *cfg) {
 
     memset(cfg, 0, sizeof(Config));
-
-    //default value
-    cfg->world_width  = 100;  
-    cfg->world_height = 30;
-
-    cfg->mass = 1.0;
-    cfg->k = 1.0;
-    cfg->dt = 0.1;
-    cfg->command_force = 10.0;
-    cfg->max_force = 50;
-
-    cfg->drone_start_x = 0;
-    cfg->drone_start_y = 0;
-
-    cfg->num_targets = 0;
-
-    cfg->num_obstacles = 0;
     
-
+//-------------------------------------------------------------- READ CONFIG
     //debug
     FILE *f = fopen(path, "r");
     if (!f) { 
@@ -84,6 +67,10 @@ static void load_config(const char *path, Config *cfg) {
             else if (!strcmp(key, "DT")) cfg->dt = atof(value);
             else if (!strcmp(key, "COMMAND_FORCE")) cfg->command_force = atof(value);
             else if (!strcmp(key, "MAX_FORCE")) cfg->max_force = atof(value);
+            else if (!strcmp(key, "RHO")) cfg->rho = atof(value);
+            else if (!strcmp(key, "ETA")) cfg->eta = atof(value);
+            else if (!strcmp(key, "ZETA")) cfg->zeta = atof(value);
+            else if (!strcmp(key, "TANGENT_GAIN")) cfg->tangent_gain = atof(value);            
 
             //drone
             else if (!strcmp(key, "DRONE_START_X")) cfg->drone_start_x = atoi(value);
@@ -133,7 +120,7 @@ int main()
     pipe(pipe_obstacles);
     pipe(pipe_targets);
 
-    // FORK ----------------------------------------------------------
+    // FORK ---------------------------------------------------
     // input
     pid_t pid_input = fork();
     if(pid_input == 0){
@@ -172,7 +159,7 @@ int main()
         execlp("konsole",
             "konsole",
             "-e",
-            "./build/bin/process_targets",  // o come lo chiami nel Makefile
+            "./build/bin/process_targets", 
             fd_str,
             (char *)NULL);
         perror("execlp process_targets failed");
@@ -200,7 +187,7 @@ int main()
     close(pipe_obstacles[1]);
     close(pipe_targets[1]);
 
-//------------------------------------------------------------------------------------------------
+    // READ MESSAGES -------------------------------------------------------------
 
     // messagge by process_obstacles
     msgObstacles msg_obstacles;
@@ -249,7 +236,7 @@ int main()
         }
     }
 
-
+    // PHYSICS ---------------------------------------------------------------
     // select
     fd_set set;
     int maxfd = (pipe_input[0] > pipe_drone[0] ? pipe_input[0] : pipe_drone[0]) + 1;
@@ -285,7 +272,7 @@ int main()
             add_drone_dynamics(&gs);
         }
 
-        //border
+        //check position
         if (gs.drone.x < 0) gs.drone.x = 0;
         if (gs.drone.y < 0) gs.drone.y = 0;
         if (gs.drone.x >= gs.world_width) gs.drone.x = gs.world_width - 1;
@@ -299,8 +286,12 @@ int main()
         }
 
         //debug
-        mvprintw(0, 0, "M=%.2f fx=%.2f fy=%.2f vx=%.2f vy=%.2f  ", gs.mass, gs.fx_cmd, gs.fy_cmd, gs.drone.vx, gs.drone.vy);
-        clrtoeol(); 
+        mvprintw(0, 0, "cmd:   fx=%.2f fy=%.2f", gs.fx_cmd, gs.fy_cmd);
+        mvprintw(1, 0, "obst:  fx=%.2f fy=%.2f", gs.fx_obst, gs.fy_obst);
+        mvprintw(2, 0, "fence: fx=%.2f fy=%.2f", gs.fx_fence, gs.fy_fence);
+        mvprintw(3, 0, "vel:   vx=%.2f vy=%.2f", gs.drone.vx, gs.drone.vy);
+        mvprintw(4, 0, "pos:   x=%6.2f y=%6.2f", gs.drone.x, gs.drone.y);
+        clrtoeol();
         refresh();
 
         // drone - target collide 

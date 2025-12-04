@@ -1,14 +1,20 @@
 #include <stdlib.h>
+#include <math.h>  
+
 #include "world.h"
+
 
 void respawn_obstacle(GameState *g, int i) {
     int ox, oy;
     int valid = 0;
+
     while (!valid) {
+        valid = 1;  
+
         ox = rand() % g->world_width;
         oy = rand() % g->world_height;
 
-        // no overlap
+        // no overlap between obstacles
         for (int j = 0; j < g->num_obstacles; j++) {
             if (j == i) continue;
             if (g->obstacles[j].x == ox && g->obstacles[j].y == oy) {
@@ -17,32 +23,35 @@ void respawn_obstacle(GameState *g, int i) {
             }
         }
 
-        //obstacle on drone
-        if (ox == g->drone.x && oy == g->drone.y){
+        // not on the drone
+        if (valid && ox == (int)round(g->drone.x) && oy == (int)round(g->drone.y)) {
             valid = 0;
-            break;
         }
 
-        // obstacle on targets
-        for (int j=0; j<g->num_targets; j++) {
-            if (g->targets[j].x == ox && g->targets[j].y == oy){
+        // not on the target
+        for (int j = 0; valid && j < g->num_targets; j++) {
+            if (g->targets[j].x == ox && g->targets[j].y == oy) {
                 valid = 0;
                 break;
             }
         }
     }
-    g->targets[i].x = ox;
-    g->targets[i].y = oy;
+
+    g->obstacles[i].x = ox;
+    g->obstacles[i].y = oy;
 }
+
 
 void respawn_target(GameState *g, int i) {
     int tx, ty;
     int valid = 0;
     while (!valid) {
+        valid = 1; 
+
         tx = rand() % g->world_width;
         ty = rand() % g->world_height;
 
-        // no overlap
+        // not overlap between targets
         for (int j = 0; j < g->num_targets; j++) {
             if (j == i) continue;
             if (g->targets[j].x == tx && g->targets[j].y == ty){
@@ -51,14 +60,13 @@ void respawn_target(GameState *g, int i) {
             }
         }
 
-        //drone-target collide
-        if (tx == g->drone.x && ty == g->drone.y){
+        // not on drone
+        if (valid && tx == (int)round(g->drone.x) && ty == (int)round(g->drone.y)){
             valid = 0;
-            break;
         }
 
-        // target on obstacles
-        for (int j=0; j<g->num_obstacles; j++) {
+        // not on obstacles
+        for (int j = 0; valid && j < g->num_obstacles; j++) {
             if (g->obstacles[j].x == tx && g->obstacles[j].y == ty){
                 valid = 0;
                 break;
@@ -69,11 +77,22 @@ void respawn_target(GameState *g, int i) {
     g->targets[i].y = ty;
 }
 
+
 void drone_target_collide(GameState *g){
+    int drone_ix = (int)round(g->drone.x);
+    int drone_iy = (int)round(g->drone.y);
+
     for (int i = 0; i < g->num_targets; i++) {
-        if (g->drone.x == g->targets[i].x && g->drone.y == g->targets[i].y){
-            g->score += 1;
-            respawn_target(g, i);
+        if (drone_ix == g->targets[i].x &&
+            drone_iy == g->targets[i].y) {
+
+            //g->score += 1;
+
+            for (int j = i; j < g->num_targets - 1; j++) {
+                g->targets[j] = g->targets[j + 1];
+            }
+            g->num_targets--;
+            i--;
         }
     }
 }

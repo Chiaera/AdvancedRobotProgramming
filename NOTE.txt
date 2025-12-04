@@ -48,7 +48,17 @@ COMPILE
     make run
 
 DA FARE
-    - forze repulsive
-    - verificare universalità path
-    - sistemare collisione drone-target 
-    - servirà  mai semaforo (?)
+    - sistemare paramentri
+    - grafica input (vedi video prof)
+
+
+PARAMETRI
+    - ρ = raggio di influenza del campo repulsivo (e fence)
+        r<ρ: esiste F
+        r>ρ: F=0
+
+    - η (eta) = quanto è forte la repulsione radiale ->scala l’intensità della spinta “via dal centro”
+        tangent_gain (beta) = quanto voglio far curvare la traiettoria attorno
+            beta=0: no deviazione laterale, solo repulsione radiale
+            beta>0: componente “swirl”
+        (termine per migliorare il comportamento di evitamento)

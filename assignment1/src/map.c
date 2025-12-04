@@ -21,22 +21,21 @@ void destroy_win(WINDOW *local_win){
 
 // initializate the window dimension
 void init_screen(Screen*s){
-    s-> starty = 1;
+    s-> starty = 5;
     s-> startx = 1;
-    s-> height = LINES-2;
+    s-> height = LINES-s -> starty-1;
     s-> width = COLS-2;
     s-> win = create_newwin(s->height, s->width, s->starty, s->startx);
 }
 
 // resize and border
 void refresh_screen(Screen *s) {
-    s->height = LINES-2;
+    s->height = LINES-s -> starty-1;
     s->width  = COLS-2;
 
     destroy_win(s->win);
     s->win = create_newwin(s->height, s->width, s->starty, s->startx);
 
-    mvprintw(0, 0, "Press keys (w e r s d f x c v), q = quit");
     clrtoeol();   
     refresh();
 }
@@ -55,6 +54,10 @@ void init_game(GameState *g, Config *cfg){
     g->fx_cmd = 0;
     g->fy_cmd = 0;
     g->max_force = cfg->max_force;
+    g->rho = cfg->rho;
+    g->eta = cfg->eta;
+    g->zeta = cfg->zeta;
+    g->tangent_gain = cfg->tangent_gain;
 
     //size
     g->world_width  = cfg->world_width;
@@ -63,11 +66,11 @@ void init_game(GameState *g, Config *cfg){
     // drone 
     g->drone.ch = '+';
     if (cfg->drone_start_x == 0 && cfg->drone_start_y == 0) {
-        g->drone.x = g->world_width/2;
-        g->drone.y = g->world_height/2;
+        g->drone.x = g->world_width  / 2.0;
+        g->drone.y = g->world_height / 2.0;
     } else {
-        g->drone.x = cfg->drone_start_x;
-        g->drone.y = cfg->drone_start_y;
+        g->drone.x = (double)cfg->drone_start_x;
+        g->drone.y = (double)cfg->drone_start_y;
     }
     g->drone.vx = 0;
     g->drone.vy = 0;
