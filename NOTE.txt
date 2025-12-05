@@ -1,64 +1,17 @@
-assignment1/
-    │
-    ├── src/
-    │   ├── blackboard.c
-    │   ├── map.c
-    │   ├── input.c
-    │   ├── drone.c
-    │   ├── obstacles.c     
-    │   ├── targets.c    
-    │   └── world.c        
-    │
-    ├── include/
-    │   ├── map.h
-    │   ├── input.h
-    │   ├── drone.h
-    │   ├── obstacles.h
-    │   ├── targets.h
-    │   └── world.h
-    │
-    ├── bin/
-    │   ├── parameters.cnf
-    │   ├── log.txt --> NON ANCORA
-    │   └── runtime dumps --> NON ANCORA
-    │
-    ├── build/
-    │   ├── obj/     (file .o)
-    │   └── bin/     (eseguibili finali)
-    │
-    └── Makefile
+ARP ASSIGNMENT
 
-CONFIG - MAP - blackboard
-    map.c       → modulo grafico (GUI) -> si occupa solo della finestra
-    map.h       → interfaccia pubblica del modulo grafico
+ASSIGNMENT 1:
+- Blackboard
+- resizing windows
+- pipes and processes for
+    * input (keys)
+    * obstacles
+    * targets
+    * drone dynamics
+- drone moves: physics forces and comunication with blackboard
+- repulsion forces of the targets and the "fence" 
 
-    config.c    → parser del file config -> legge parametri
-    config.h    → interfaccia del parser (struttura Parametri + load_config)
-
-    blackboard.c    → gestisce tutti i processi + blackboard
-
-GITHUB
-    git add . (. or nameFile)
-    git commit -m "message of commit"
-    git push -u origin main
-    
-COMPILE
-    make clear (r, .rf build)
-    make
-    make run
-
-DA FARE
-    - sistemare paramentri
-    - grafica input (vedi video prof)
-
-
-PARAMETRI
-    - ρ = raggio di influenza del campo repulsivo (e fence)
-        r<ρ: esiste F
-        r>ρ: F=0
-
-    - η (eta) = quanto è forte la repulsione radiale ->scala l’intensità della spinta “via dal centro”
-        tangent_gain (beta) = quanto voglio far curvare la traiettoria attorno
-            beta=0: no deviazione laterale, solo repulsione radiale
-            beta>0: componente “swirl”
-        (termine per migliorare il comportamento di evitamento)
+ASSIGNMENT2:
+- watchdog
+- logfile
+- process file
