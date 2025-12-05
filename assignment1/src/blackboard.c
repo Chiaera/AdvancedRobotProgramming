@@ -114,6 +114,15 @@ int main()
     int old_cols  = COLS;
 
     initscr();
+
+    start_color();
+    //target
+    init_pair(1, COLOR_YELLOW, COLOR_BLACK);
+    //obstacles
+    init_pair(2, COLOR_MAGENTA, COLOR_BLACK);
+    //drone
+    init_pair(3, COLOR_GREEN, COLOR_BLACK);
+    
     noecho();
     curs_set(0);
     srand(time(NULL));

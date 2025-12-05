@@ -114,7 +114,9 @@ void render(Screen *s, GameState *g){
         if (tx > s->width-2) tx = s->width-2;
         if (ty < 1) ty = 1;
         if (ty > s->height-2) ty = s->height-2;
+        wattron(s->win, COLOR_PAIR(1) | A_BOLD);
         mvwaddch(s->win, ty, tx, 'T');
+        wattroff(s->win, COLOR_PAIR(1) | A_BOLD);
     }
 
     // ostacoli
@@ -125,7 +127,10 @@ void render(Screen *s, GameState *g){
         if (ox > s->width-2) ox = s->width-2;
         if (oy < 1) oy = 1;
         if (oy > s->height-2) oy = s->height-2;
+        wattron(s->win, COLOR_PAIR(2) | A_BOLD);
         mvwaddch(s->win, oy, ox, 'O');
+        wattroff(s->win, COLOR_PAIR(2) | A_BOLD);
+        
     }
 
     // drone
@@ -135,7 +140,9 @@ void render(Screen *s, GameState *g){
     if (dx > s->width-2) dx = s->width-2;
     if (dy < 1) dy = 1;
     if (dy > s->height-2) dy = s->height-2;
+    wattron(s->win, COLOR_PAIR(3) | A_BOLD);
     mvwaddch(s->win, dy, dx, g->drone.ch);
+    wattroff(s->win, COLOR_PAIR(3) | A_BOLD);
 
     wrefresh(s->win);
 }
