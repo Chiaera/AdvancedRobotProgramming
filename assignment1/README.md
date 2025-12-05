@@ -1,26 +1,34 @@
 # Assignment 1 – Drone Operation Simulator
 
-This project implements an **interactive multi-process drone simulator** based on a **Blackboard architecture**, where several external processes communicate through Unix pipes to update the global GameState.
+This project implements an **interactive multi-process drone simulator** based on a **Blackboard architecture**, where multiple external processes communicate through Unix pipes.
 
 ---
 
 ## System Architecture
 
-Below is the architecture diagram showing how each process interacts with the central Blackboard:
+The system follows a **Blackboard architectural** pattern where multiple autonomous processes communicate with a central server (Blackboard):
 
 ![Architecture](img/architectures.jpg)
 
-### Components Overview
+### Principal Components
 
-| Component | Role | Files | Communication |
+| Component | Role | Process | Communication |
 |----------|------|-------|----------------|
-| **B: Blackboard Server** | Main process. Loads parameters, maintains GameState, updates physics, draws the map, receives messages. | `blackboard.c`, `map.c`, `world.c`, `world_physics.c` | Pipes + `select()` |
-| **I: Input Manager** | Handles keyboard input and sends directional/brake commands. | `process_input.c` | `pipe_input → Blackboard` |
-| **D: Drone Dynamics** | Sends periodic tick messages to trigger physics updates. | `process_drone.c` | `pipe_drone → Blackboard` |
-| **T: Target Generator** | Generates initial random target positions. | `process_targets.c` | `pipe_target → Blackboard` |
-| **O: Obstacle Generator** | Generates initial random obstacle positions. | `process_obstacles.c` | `pipe_obstacles → Blackboard` |
-| **Physics Engine** | Computes forces and updates drone motion via Euler integration. | `world_physics.c` | internal |
-| **Map Renderer** | Draws the world, drone, obstacles, and targets using ncurses. | `map.c` | internal |
+| **B: Blackboard Server** | * Central game server, * physics updates, * rendering, * message routing|`blackboard`| Pipes + `select()` |
+| **I: Input Manager** | * Captures keyboard input, * sends directional commands| `process_input` | `pipe_input → Blackboard` |
+| **D: Drone Dynamics** |Sends periodic tick messages (50 Hz)| `process_drone` | `pipe_drone → Blackboard` |
+| **T: Target Generator** |Generates random target positions. | `process_targets` | `pipe_target → Blackboard` |
+| **O: Obstacle Generator** |Generates random obstacle positions. | `process_obstacles` | `pipe_obstacles → Blackboard` |
+
+### Process Flow
+1. Initialization: Blackboard spawns all child processes via `fork()` and `execlp()`
+2. Setup Phase: Target and obstacle generators send initial configurations
+3. Main Loop:
+   * Input manager continuously monitors keyboard
+   * Drone process sends physics tick messages (20ms intervals)
+   * Blackboard processes messages via `select()` multiplexing
+   * Physics engine updates drone position and forces
+   * Renderer updates ncurses display
 
 ---
 
@@ -32,25 +40,44 @@ The drone motion follows the dynamic equation:
 \]
 
 Where:
+
     - **p** = drone position (x, y)  
     - **M** = mass  
-    - **K** = viscous drag  
+    - **K** = viscous drag coefficient
     - **ΣF** = total force (command + obstacle + fence)
 
 ### Forces implemented
 
 1. **Command Force (F<sub>cmd</sub>)**  
    Updated incrementally from input commands (8 directions + brake).
+   #### Key Functions
+   |Key|Action|Description|
+   |---|---|---|
+   |w or W|Move Up-Left|Diagonal movement|
+   |e or E|Move Up|Vertical movement|
+   |r or R|Move Up-Right|Diagonal movement|
+   |s or S|Move Left|Horizontal movement|
+   |d or D|Brake|Reduces velocity and command force by 50%|
+   |f or F|Move Right|Horizontal movement|
+   |x or X|Move Down-Left|Diagonal movement|
+   |c or C|Move Down|Vertical movement|
+   |v or V|Move Down-Right|Diagonal movement|
+   |q or Q|Quit|Shutdown simulator|
 
 2. **Obstacle Repulsion (F<sub>obst</sub>)**  
-   Based on a modified Khatib potential field, with:
-   - radial repulsion  
-   - tangential (swirl) component  
+   Modified Khatib potential field with radial and tangential components:
+   \[
+   \F<sub>repulsion</sub> = η \cdot (\frac{1}{d} - \frac{1}{ρ}) \cdot (\frac{1}{d^2}),  when d < ρ
+   \]
+   Where
+      - **ρ (rho)**: influence radius of obstacles
+      - **η (eta)**: radial repulsion gain
+      - **d**: distance from obstacle center
+
+   Tangential force creates a smooth “swirling” effect around obstacles.
 
 3. **Fence Repulsion (F<sub>fence</sub>)**  
    Avoids boundary collisions by pushing the drone away from the world limits.
-
-Position is stored as **double precision** internally to preserve subcell movement.
 
 ---
 
@@ -99,7 +126,8 @@ assignment1/
 gh repo clone Chiaera/AdvancedRobotProgramming
 ```
 
-### Compile and run
+### Launch
+The `MakeFile` is responsable for removing the previous builds and compile all the files, so you can directly run the program.
 ```bash
 #from the assignment1 directory
 cd ~/AdvancedRobotProgramming/assignment1
