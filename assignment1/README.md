@@ -67,8 +67,9 @@ Where:
 2. **Obstacle Repulsion (F<sub>obst</sub>)**  
    Modified Khatib potential field with radial and tangential components:
    $$ 
-   F_{\text{rep}} = \eta \left( \frac{1}{d} - \frac{1}{\rho} \right)\frac{1}{d^{2}},   \qquad d < \rho 
-   $$
+   F_{\text{rep}} =
+   \eta\left(\frac{1}{d} - \frac{1}{\rho}\right)\frac{1}{d^2},
+   \qquad d < \rho   $$
    Where
       - **ρ (rho)**: influence radius of obstacles
       - **η (eta)**: radial repulsion gain
