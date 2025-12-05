@@ -13,12 +13,13 @@ The system follows a **Blackboard architectural** pattern where multiple autonom
 ### Principal Components
 
 | Component | Role | Process | Communication |
-|----------|------|-------|----------------|
-| **B: Blackboard Server** | * Central game server, * physics updates, * rendering, * message routing|`blackboard`| Pipes + `select()` |
-| **I: Input Manager** | * Captures keyboard input, * sends directional commands| `process_input` | `pipe_input → Blackboard` |
-| **D: Drone Dynamics** |Sends periodic tick messages (50 Hz)| `process_drone` | `pipe_drone → Blackboard` |
-| **T: Target Generator** |Generates random target positions. | `process_targets` | `pipe_target → Blackboard` |
-| **O: Obstacle Generator** |Generates random obstacle positions. | `process_obstacles` | `pipe_obstacles → Blackboard` |
+|----------|------|---------|----------------|
+| **B: Blackboard Server** | - Central game server<br>- Physics updates<br>- Rendering<br>- Message routing | `blackboard` | Pipes + `select()` |
+| **I: Input Manager** | - Captures keyboard input<br>- Sends directional commands | `process_input` | `pipe_input → Blackboard` |
+| **D: Drone Dynamics** | Sends periodic tick messages (50 Hz) | `process_drone` | `pipe_drone → Blackboard` |
+| **T: Target Generator** | Generates random target positions | `process_targets` | `pipe_targets → Blackboard` |
+| **O: Obstacle Generator** | Generates random obstacle positions | `process_obstacles` | `pipe_obstacles → Blackboard` |
+
 
 ### Process Flow
 1. Initialization: Blackboard spawns all child processes via `fork()` and `execlp()`
@@ -40,35 +41,34 @@ The drone motion follows the dynamic equation:
 \]
 
 Where:
-
-    - **p** = drone position (x, y)  
-    - **M** = mass  
-    - **K** = viscous drag coefficient
-    - **ΣF** = total force (command + obstacle + fence)
+- **p** = drone position (x, y)  
+- **M** = mass  
+- **K** = viscous drag coefficient
+- **ΣF** = total force (command + obstacle + fence)
 
 ### Forces implemented
 
 1. **Command Force (F<sub>cmd</sub>)**  
    Updated incrementally from input commands (8 directions + brake).
-   #### Key Functions
-   |Key|Action|Description|
-   |---|---|---|
-   |w or W|Move Up-Left|Diagonal movement|
-   |e or E|Move Up|Vertical movement|
-   |r or R|Move Up-Right|Diagonal movement|
-   |s or S|Move Left|Horizontal movement|
-   |d or D|Brake|Reduces velocity and command force by 50%|
-   |f or F|Move Right|Horizontal movement|
-   |x or X|Move Down-Left|Diagonal movement|
-   |c or C|Move Down|Vertical movement|
-   |v or V|Move Down-Right|Diagonal movement|
-   |q or Q|Quit|Shutdown simulator|
+    #### Key Functions
+    |Key|Action|Description|
+    |---|---|---|
+    |w or W|Move Up-Left|Diagonal movement|
+    |e or E|Move Up|Vertical movement|
+    |r or R|Move Up-Right|Diagonal movement|
+    |s or S|Move Left|Horizontal movement|
+    |d or D|Brake|Reduces velocity <br>and force by 50%|
+    |f or F|Move Right|Horizontal movement|
+    |x or X|Move Down-Left|Diagonal movement|
+    |c or C|Move Down|Vertical movement|
+    |v or V|Move Down-Right|Diagonal movement|
+    |q or Q|Quit|Shutdown simulator|
 
 2. **Obstacle Repulsion (F<sub>obst</sub>)**  
    Modified Khatib potential field with radial and tangential components:
    \[
-   \F<sub>repulsion</sub> = η \cdot (\frac{1}{d} - \frac{1}{ρ}) \cdot (\frac{1}{d^2}),  when d < ρ
-   \]
+    F = \eta \left( \frac{1}{d} - \frac{1}{\rho} \right)\frac{1}{d^2}, \qquad d < \rho
+\]
    Where
       - **ρ (rho)**: influence radius of obstacles
       - **η (eta)**: radial repulsion gain
