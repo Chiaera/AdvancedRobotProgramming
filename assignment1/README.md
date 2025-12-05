@@ -1,4 +1,4 @@
-# Assignment 1 – Drone Operation Simulator
+# Assignment 1
 
 This project implements an **interactive multi-process drone simulator** based on a **Blackboard architecture**, where multiple external processes communicate through Unix pipes.
 
