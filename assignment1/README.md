@@ -36,9 +36,9 @@ The system follows a **Blackboard architectural** pattern where multiple autonom
 ## Physics Model
 
 The drone motion follows the dynamic equation:
-$$ 
-F = M \frac{d^2 p}{dt^2} + K \frac{dp}{dt} 
-$$
+\[ 
+   F = M \frac{d^2 p}{dt^2} + K \frac{dp}{dt} 
+\]
 
 Where:
 - **p** = drone position (x, y)  
