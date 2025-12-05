@@ -20,17 +20,85 @@ The system follows a **Blackboard architectural** pattern where multiple autonom
 | **T: Target Generator** | Generates random target positions | `process_targets` | `pipe_targets → Blackboard` |
 | **O: Obstacle Generator** | Generates random obstacle positions | `process_obstacles` | `pipe_obstacles → Blackboard` |
 
+<br>
 
-### Process Flow
-1. Initialization: Blackboard spawns all child processes via `fork()` and `execlp()`
-2. Setup Phase: Target and obstacle generators send initial configurations
-3. Main Loop:
-   * Input manager continuously monitors keyboard
-   * Drone process sends physics tick messages (20ms intervals)
-   * Blackboard processes messages via `select()` multiplexing
-   * Physics engine updates drone position and forces
-   * Renderer updates ncurses display
+---
 
+## Component Details & Execution Flow
+1. Initialization
+  When the simulator starts, the **Blackboard server** boots first.
+  It performs the following actions:
+    - Creates IPC channels using `pipe()`.
+    - Spawns child processes (`process_input`, `process_drone`, `process_targets`, `process_obstacles`) using `fork()` and `execlp()`.
+    - Initializes the shared `GameState` structure (map limits, parameters, default drone state)
+    - Reads **simulation parameters** from `parameters.config` (world size, initial position of the drone, number of obstacles and targets, mass M, drag K, obstacle influence radius ρ, repulsion gains η)
+    - Loads map and configuration files via the **Map Loader** (`map.c`), which uses `fopen()`, `fscanf()`, and updates initial fields of the GameState
+   
+   At this stage, all processes are running and ready to send data to the Blackboard
+
+3. Message Flow During Simulation
+  The simulator now enters its main operational phase
+  Each external component contributes information to the Blackboard through a **non-blocking, asynchronous message flow**.
+    * Input Manager → Blackboard
+      - runs an ncurses non-blocking input loop (`nodelay()`, `getch()`)
+      - each keystroke is converted into a control force message
+      - sends messages through write(`pipe_input`)
+      
+      **Effect on flow:**<br>The Blackboard updates the *command force* stored in `GameState`.
+      
+     * Drone Process → Blackboard
+       - acts as the global **timekeeper**,
+       - uses `nanosleep()` to trigger a tick every 20 ms (50 Hz)
+       - sends a **DRONE_TICK** message via write(`pipe_drone`)
+       
+       **Effect on the flow:**<br>The Blackboard, upon receiving a tick, it is used to trigger the **Physics Engine**.
+      
+    * Targets and Obstacles → Blackboard
+      Both generator processes:
+      - use `rand()` to compute new positions
+      - send updates asynchronously using their respective pipes
+      
+      **Effect on flow:**<br>The Blackboard merges these updates into GameState.targets and GameState.obstacles.
+    
+  4. Blackboard Main Loop (Central Flow Control)
+     The Blackboard runs a continuous loop driven by:
+     - `select()`: monitors all pipes simultaneously
+     - `read()`: retrieves available messages without blocking
+     - update functions: apply received data into `GameState`
+     - `world_physics_step()`: computes new physics state
+     - ncurses: refreshes the visual interface
+       
+     This loop is the core “heartbeat” of the system.
+     It ensures coordination without requiring components to communicate directly with each other.
+
+  5. Physics Update (Triggered by Drone Tick)
+     Whenever a 20 ms tick arrives, the Blackboard calls the Physics Engine.
+     The engine:
+     - reads current position + velocity from `GameState`
+     - compute all the forces (command force, obstacle repulsion and fence repulsion)
+     - writes updated drone state back into `GameState`
+     
+     No IPC is used here: everything is in-memory within the Blackboard.
+
+  6. Rendering Phase
+     After physics is updated, the Blackboard:
+     - draws the map
+     - draws the drone, targets, obstacles
+     - prints HUD elements (velocity, forces, position) using classic ncurses primitives.
+       
+     This creates an interactive console-based simulation refreshed at ~50Hz.
+<br>
+
+### Shared Component: GameState
+Although not an active process, `GameState` is the central shared structure that:
+- stores all world data
+- receives updates from all external modules
+- is read by the physics engine and renderer
+
+It is declared in `world.h` and acts as the “memory” of the Blackboard.
+  
+<br>
+   
 ---
 
 ## Physics Model
@@ -48,8 +116,8 @@ Where:
 ### Forces implemented
 
 1. **Command Force (F<sub>cmd</sub>)**  
-   Updated incrementally from input commands (8 directions + brake).
-   Key Functions:
+   Updated incrementally from input commands (8 directions + brake).<br>
+   **Key Functions:**
     |Key|Action|Description|
     |---|---|---|
     |w or W|Move Up-Left|Diagonal movement|
@@ -77,6 +145,8 @@ Where:
 
 4. **Fence Repulsion (F<sub>fence</sub>)**  
    Avoids boundary collisions by pushing the drone away from the world limits.
+
+<br>
 
 ---
 
@@ -109,6 +179,8 @@ assignment1/
 ├── Makefile
 └── README.md
 ```
+
+<br>
 
 ---
 
