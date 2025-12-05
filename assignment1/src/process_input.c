@@ -106,11 +106,18 @@ void set_input(int fd, WINDOW* win){
         if(ch == 'c' || ch=='C') { msg.dx =  0; msg.dy = +1; }
         if(ch == 'v' || ch=='V') { msg.dx = +1; msg.dy = +1; }
         
+        //quit
         if(ch == 'q' || ch == 'Q') {
             msgInput quit_msg = {'Q', 0, 0};
             write(fd, &quit_msg, sizeof(quit_msg));
             break; 
         }
+
+        /*//read the parameters
+        if (ch == 'p' || ch == 'P') {
+        msgInput msg = {'P', 0, 0};
+        write(fd, &msg, sizeof(msg));
+        }*/
         
         write(fd, &msg, sizeof(msg));
         usleep(20000);

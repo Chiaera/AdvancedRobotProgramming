@@ -87,6 +87,21 @@ static void load_config(const char *path, Config *cfg) {
     fclose(f);
 }
 
+//new read of the parameters
+void apply_new_parameters(GameState *gs, Config *cfg) {
+    gs->mass = cfg->mass;
+    gs->k = cfg->k;
+    gs->dt = cfg->dt;
+    gs->command_force = cfg->command_force;
+    gs->max_force = cfg->max_force;
+    gs->rho = cfg->rho;
+    gs->eta = cfg->eta;
+    gs->zeta = cfg->zeta;
+    gs->tangent_gain = cfg->tangent_gain;
+    gs->world_width = cfg->world_width;
+    gs->world_height = cfg->world_height;
+}
+
 
 // ----------------------------------------------------------- MAIN
 
@@ -248,20 +263,23 @@ int main()
 
         select(maxfd, &set, NULL, NULL, NULL);
 
-        // INPUT - direction
+        // INPUT 
         if (FD_ISSET(pipe_input[0], &set)) {
             msgInput m;
             read(pipe_input[0], &m, sizeof(m));
 
-            if (m.type == 'Q') break;
-            else if (m.type == 'I') {
+            if (m.type == 'Q') break; //quit
+            else if (m.type == 'I') {  //direction
                 int mx = m.dx;
                 int my = m.dy;
                 add_direction(&gs, mx, my);
             }
-            else if (m.type == 'B') {
+            else if (m.type == 'B') {  //brake
                 use_brake(&gs);
-            }
+            }/* else if (m.type == 'P'){ //read parameters
+                load_config("bin/parameters.config", &cfg);
+                apply_new_parameters(&gs, &cfg);
+            }*/
         }
 
         // DRONE - drone dynamics

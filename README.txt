@@ -11,7 +11,9 @@ ASSIGNMENT 1:
 - drone moves: physics forces and comunication with blackboard
 - repulsion forces of the targets and the "fence" 
 
+
 ASSIGNMENT2:
 - watchdog
 - logfile
 - process file
+- score

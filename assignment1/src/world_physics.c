@@ -46,7 +46,9 @@ static Force add_obstacles_repulsion(GameState *gs){
         double dy = (double)gs->drone.y - (double)gs->obstacles[i].y;
 
         double pow_d = pow_distance(dx, dy);
-        if (pow_d < 1e-6) continue;
+        if (pow_d < 1e-6){
+            pow_d = 1e-6;
+        }
         double d = sqrt(pow_d);
         
         if(d<rho){
@@ -80,24 +82,8 @@ static Force add_obstacles_repulsion(GameState *gs){
 // FENCE - repulsion
 static Force add_fence_repulsion(GameState *gs){
     Force F = {0,0};
-
-    //if an obstacle is near the wall
-    double min_d2 = 1e9;
-    for (int i = 0; i < gs->num_obstacles; ++i) {
-        double dx = gs->drone.x - gs->obstacles[i].x;
-        double dy = gs->drone.y - gs->obstacles[i].y;
-        double d2 = dx*dx + dy*dy;
-        if (d2 < min_d2) min_d2 = d2;
-    }
-
-    double scale = 1.0;
-    double rho_obs = gs->rho;
-    if (min_d2 < rho_obs * rho_obs) {
-        scale = 0.9;
-    }
-
     double rho = gs->rho*0.5; //distance of wall's influence
-    double eta = gs->eta*0.2*scale; //gain of wall's repulsion
+    double eta = gs->eta*0.2; //gain of wall's repulsion
 
     //border distance
     double bl = (double)gs->drone.x;
@@ -215,7 +201,32 @@ void add_drone_dynamics(GameState *gs){
     //Euler - new position
     double new_x = gs->drone.x + gs->drone.vx * gs->dt;
     double new_y = gs->drone.y + gs->drone.vy * gs->dt;
-    
+
+    //threshold
+    double r_coll = 1;  
+
+    for (int i = 0; i < gs->num_obstacles; ++i) {
+        double ox = (double)gs->obstacles[i].x;
+        double oy = (double)gs->obstacles[i].y;
+
+        double dx = new_x - ox;
+        double dy = new_y - oy;
+        double d2 = dx*dx + dy*dy;
+
+        if (d2 < r_coll * r_coll) {
+            double d = sqrt(d2);
+            if(d2 > 1e-9){
+
+            }
+            //drone around the obstacle
+            double scale = r_coll / d;
+            new_x = ox + dx * scale;
+            new_y = oy + dy * scale;
+            break; 
+        }
+    }
+
+
 
     //border clamp 
     if (new_x < 0.0) {
