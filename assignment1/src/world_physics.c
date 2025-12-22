@@ -223,7 +223,8 @@ void add_drone_dynamics(GameState *gs){
     double new_y = gs->drone.y + gs->drone.vy * gs->dt;
 
     //threshold
-    double r_coll = 1;  
+    double r_coll = 1.2;  
+    double r2 = r_coll*r_coll;
 
     for (int i = 0; i < gs->num_obstacles; ++i) {
         //save the coordinates in for the i-th obstacle
@@ -235,8 +236,9 @@ void add_drone_dynamics(GameState *gs){
         double dy = new_y - oy;
         double d2 = dx*dx + dy*dy;
 
-        if (d2 < r_coll * r_coll) { //prevent division by zero
-            if(d2 < 1e-9){
+        //collision check
+        if (d2 < r2) { 
+            if(d2 < 1e-9){ //prevent division by zero
                 d2 = 1e-9;
             }
             double d = sqrt(d2);
