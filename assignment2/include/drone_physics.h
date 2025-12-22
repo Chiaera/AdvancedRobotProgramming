@@ -4,8 +4,8 @@
     - compute the dynamics of the drone
 */
 
-#ifndef WORLD_PHYSICS_H
-#define WORLD_PHYSICS_H
+#ifndef DRONE_PHYSICS_H
+#define DRONE_PHYSICS_H
 
 #include "map.h"
 

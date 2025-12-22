@@ -65,7 +65,7 @@ The system follows a **Blackboard architectural** pattern where multiple autonom
      - `select()`: monitors all pipes simultaneously
      - `read()`: retrieves available messages without blocking
      - update functions: apply received data into `GameState`
-     - `world_physics_step()`: computes new physics state
+     - `drone_physics_step()`: computes new physics state
      - ncurses: refreshes the visual interface
        
      This loop is the core “heartbeat” of the system.
@@ -166,7 +166,7 @@ assignment1/
 │ ├── process_drone.h
 │ ├── process_input.h
 │ ├── world.h
-│ └── world_physics.h
+│ └── drone_physics.h
 ├── src/
 │ ├── blackboard.c
 │ ├── map.c
@@ -175,7 +175,7 @@ assignment1/
 │ ├── process_obstacles.c
 │ ├── process_targets.c
 │ ├── world.c
-│ └── world_physics.c
+│ └── drone_physics.c
 ├── Makefile
 └── README.md
 ```
