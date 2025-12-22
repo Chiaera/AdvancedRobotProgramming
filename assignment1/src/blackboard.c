@@ -14,6 +14,7 @@
 #include <sys/select.h>
 #include <string.h>
 #include <ncurses.h>
+#include <errno.h>
 
 #include <math.h>
 #include <time.h>
@@ -21,6 +22,13 @@
 #include "map.h"
 #include "world.h"
 #include "world_physics.h"
+
+//debug
+#ifdef DEBUG
+#define DBG(...) fprintf(stderr, __VA_ARGS__)
+#else
+#define DBG(...) do {} while(0)
+#endif
 
 // --------------------------------------------------------------- STRUCT
 typedef struct { //use for the input messages, x and y to divide the input force in its directions
@@ -169,7 +177,7 @@ int main()
             (char *)NULL);
         perror("execlp process_input failed");
         exit(1);
-    } else if(pipe(pipe_input) == -1){ //error
+    } else if (pid_input < 0) { // error
         perror("fork failed for process_input");
         exit(EXIT_FAILURE);
     }
@@ -177,6 +185,7 @@ int main()
     // drone
     pid_t pid_drone = fork();
     if(pid_drone == 0){ //child process of the drone process
+        close(pipe_drone[0]); 
         char fd_str[16];
         snprintf(fd_str, sizeof(fd_str), "%d", pipe_drone[1]);
         execlp(//"konsole", "konsole", "-e",
@@ -185,7 +194,7 @@ int main()
             (char *)NULL);
         perror("execlp process_drone failed");
         exit(1);
-    } else if(pipe(pid_drone) == -1){ //error
+    } else if(pid_drone == -1){ //error
         perror("fork failed for process_drone");
         exit(EXIT_FAILURE);
     }
@@ -204,7 +213,7 @@ int main()
             (char *)NULL);
         perror("execlp process_targets failed");
         exit(1);
-    } else if(pipe(pid_targets) == -1){ //error
+    } else if(pid_targets == -1){ //error
         perror("fork failed for process_targets");
         exit(EXIT_FAILURE);
     }
@@ -212,6 +221,7 @@ int main()
     // obstacles
     pid_t pid_obstacles = fork();
     if(pid_obstacles == 0){ //child process of the obstacles process
+        close(pipe_obstacles[0]);
         char fd_str[16];
         snprintf(fd_str, sizeof(fd_str), "%d", pipe_obstacles[1]);
         execlp("konsole",
@@ -222,7 +232,7 @@ int main()
             (char *)NULL);
         perror("execlp process_obstacles failed");
         exit(1);
-    } else if(pipe(pid_obstacles) == -1){ //error
+    } else if(pid_obstacles == -1){ //error
         perror("fork failed for process_obstacles");
         exit(EXIT_FAILURE);
     }
@@ -292,12 +302,20 @@ int main()
         FD_SET(pipe_input[0], &set);
         FD_SET(pipe_drone[0], &set);
 
-        select(maxfd, &set, NULL, NULL, NULL); //listen to both input and drone process
+        int rc = select(maxfd, &set, NULL, NULL, NULL);//listen to both input and drone process
+        if (rc < 0) {
+            if (errno == EINTR) continue;   // resize
+                perror("select");
+                break;
+        }
 
         // INPUT 
         if (FD_ISSET(pipe_input[0], &set)) {
             msgInput m;
-            read(pipe_input[0], &m, sizeof(m));
+            ssize_t ri = read(pipe_input[0], &m, sizeof(m));         
+            if (ri != sizeof(m)) continue;  //error of reading
+            
+            DBG("[DEBUG] input msg: type=%c dx=%d dy=%d\n", m.type, m.dx, m.dy);
 
             if (m.type == 'Q') break; //quit
             else if (m.type == 'I') {  //direction: separation in x and y
@@ -316,7 +334,11 @@ int main()
         // DRONE - drone dynamics
         if(FD_ISSET(pipe_drone[0], &set)){
             msgDrone m;
-            read(pipe_drone[0], &m, sizeof(m)); //timer callout: update the drone dynamics
+            ssize_t rd= read(pipe_drone[0], &m, sizeof(m));         //timer callout: update the drone dynamics
+            if (rd != sizeof(m)) continue;  //error of reading
+            
+            DBG("[DEBUG] drone tick msg: type=%c x=%d y=%d\n", m.type, m.x, m.y);
+
             add_drone_dynamics(&gs); 
         }
 
@@ -335,9 +357,13 @@ int main()
 
         //debug - print the useful values
         mvprintw(0, 0, "cmd:   fx=%.2f fy=%.2f", gs.fx_cmd, gs.fy_cmd);
+        clrtoeol();
         mvprintw(1, 0, "obst:  fx=%.2f fy=%.2f", gs.fx_obst, gs.fy_obst);
+        clrtoeol();
         mvprintw(2, 0, "fence: fx=%.2f fy=%.2f", gs.fx_fence, gs.fy_fence);
+        clrtoeol();
         mvprintw(3, 0, "vel:   vx=%.2f vy=%.2f", gs.drone.vx, gs.drone.vy);
+        clrtoeol();
         mvprintw(4, 0, "pos:   x=%6.2f y=%6.2f", gs.drone.x, gs.drone.y);
         clrtoeol();
         refresh();

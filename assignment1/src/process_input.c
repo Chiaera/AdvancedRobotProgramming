@@ -94,7 +94,7 @@ void draw_keys(WINDOW* win, char highlight)
 void set_input(int fd, WINDOW* win){
     nodelay(stdscr, TRUE);
 
-    while(1){ //loop to continue to read the input
+    while(1){ 
         int ch = getch();
         if (ch == ERR) {        
             usleep(20000);
