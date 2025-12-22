@@ -1,3 +1,12 @@
+/* This file containts the world server:
+    - initialize the struct fot the pipe messages
+    - initialize the world variable with their value read from the config file
+    - create the ncurses windows 
+    - read the obstacle position from the msgObstacle and add the element on the map
+    - read the target position from the msgTarget and add the element on the map
+    - management the physics of the world
+*/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -14,23 +23,23 @@
 #include "world_physics.h"
 
 // --------------------------------------------------------------- STRUCT
-typedef struct {
+typedef struct { //use for the input messages, x and y to divide the input force in its directions
     char type;
     int dx, dy;
 } msgInput;
 
-typedef struct  {
+typedef struct  { //use for the drone message, x and y to check the drone position
     char type;
     int x, y;
 } msgDrone;
 
-typedef struct {
+typedef struct { //use for the target messages, define the number of the targets
     char type;
     int num;
     Target targets[MAX_TARGETS];
 } msgTargets;
 
-typedef struct  {
+typedef struct  { //use use for the obstacles messages, define the number of the obstacles
     char type;
     int num;
     Obstacle obstacles[MAX_OBSTACLES];
@@ -40,18 +49,18 @@ typedef struct  {
 // read Config file
 static void load_config(const char *path, Config *cfg) {
 
-    memset(cfg, 0, sizeof(Config));
+    memset(cfg, 0, sizeof(Config)); //initialize the byte of the message
     
 //-------------------------------------------------------------- READ CONFIG
-    //debug
-    FILE *f = fopen(path, "r");
-    if (!f) { 
+
+    FILE *f = fopen(path, "r"); //read config file
+    if (!f) { //debug for the reading of the file
         fprintf(stderr, "Error in reading parameters.config %s\n", path); 
         fprintf(stderr, "Use default values.\n");
         return;
     }
 
-    //parsig
+    //parsig: iniitalize all the variables with the value read from the config
     char line[256];
     while (fgets(line, sizeof(line), f)) {
         char key[128], value[128];
@@ -87,7 +96,7 @@ static void load_config(const char *path, Config *cfg) {
     fclose(f);
 }
 
-//new read of the parameters
+//use the new parameters in the gamestate variables
 void apply_new_parameters(GameState *gs, Config *cfg) {
     gs->mass = cfg->mass;
     gs->k = cfg->k;
@@ -108,8 +117,8 @@ void apply_new_parameters(GameState *gs, Config *cfg) {
 int main()
 {
     // ncurses
-    Screen screen;
-    GameState gs;
+    Screen screen; //initialize the screen 
+    GameState gs; //initialize the variables of the gamestate struct
     int old_lines = LINES;
     int old_cols  = COLS;
 
@@ -134,7 +143,7 @@ int main()
     init_screen(&screen);
     init_game(&gs, &cfg);
 
-    // pipe
+    // define the pipes
     int pipe_input[2];
     int pipe_drone[2];
     int pipe_obstacles[2];
@@ -147,7 +156,8 @@ int main()
     // FORK ---------------------------------------------------
     // input
     pid_t pid_input = fork();
-    if(pid_input == 0){
+
+    if(pid_input == 0){ //child process of the input process
         close(pipe_input[0]); 
         char fd_str[16];
         snprintf(fd_str, sizeof(fd_str), "%d", pipe_input[1]);
@@ -159,11 +169,14 @@ int main()
             (char *)NULL);
         perror("execlp process_input failed");
         exit(1);
+    } else if(pipe(pipe_input) == -1){ //error
+        perror("fork failed for process_input");
+        exit(EXIT_FAILURE);
     }
 
     // drone
     pid_t pid_drone = fork();
-    if(pid_drone == 0){
+    if(pid_drone == 0){ //child process of the drone process
         char fd_str[16];
         snprintf(fd_str, sizeof(fd_str), "%d", pipe_drone[1]);
         execlp(//"konsole", "konsole", "-e",
@@ -172,11 +185,14 @@ int main()
             (char *)NULL);
         perror("execlp process_drone failed");
         exit(1);
+    } else if(pipe(pid_drone) == -1){ //error
+        perror("fork failed for process_drone");
+        exit(EXIT_FAILURE);
     }
 
     // target
     pid_t pid_targets = fork();
-    if (pid_targets == 0) {
+    if (pid_targets == 0) { //child process of the targets process
         close(pipe_targets[0]);
         char fd_str[16];
         snprintf(fd_str, sizeof(fd_str), "%d", pipe_targets[1]);
@@ -188,11 +204,14 @@ int main()
             (char *)NULL);
         perror("execlp process_targets failed");
         exit(1);
+    } else if(pipe(pid_targets) == -1){ //error
+        perror("fork failed for process_targets");
+        exit(EXIT_FAILURE);
     }
     
     // obstacles
     pid_t pid_obstacles = fork();
-    if(pid_obstacles == 0){
+    if(pid_obstacles == 0){ //child process of the obstacles process
         char fd_str[16];
         snprintf(fd_str, sizeof(fd_str), "%d", pipe_obstacles[1]);
         execlp("konsole",
@@ -203,6 +222,9 @@ int main()
             (char *)NULL);
         perror("execlp process_obstacles failed");
         exit(1);
+    } else if(pipe(pid_obstacles) == -1){ //error
+        perror("fork failed for process_obstacles");
+        exit(EXIT_FAILURE);
     }
 
     //close write 
@@ -216,11 +238,11 @@ int main()
     // messagge by process_obstacles
     msgObstacles msg_obstacles;
     ssize_t n = read(pipe_obstacles[0], &msg_obstacles, sizeof(msg_obstacles));
-    if (n == sizeof(msg_obstacles) && msg_obstacles.type == 'O') {
+    if (n == sizeof(msg_obstacles) && msg_obstacles.type == 'O') { //define the obstacle as 'O'
         gs.num_obstacles = msg_obstacles.num;
         if (gs.num_obstacles > MAX_OBSTACLES) gs.num_obstacles = MAX_OBSTACLES;
 
-        for (int i = 0; i < gs.num_obstacles; i++) {
+        for (int i = 0; i < gs.num_obstacles; i++) { //loop to associate every obstacle to its (x,y) coordinates
             gs.obstacles[i].x = msg_obstacles.obstacles[i].x;
             gs.obstacles[i].y = msg_obstacles.obstacles[i].y;
         }
@@ -230,18 +252,18 @@ int main()
     // position check
     for (int i = 0; i < gs.num_obstacles; i++) {
         if (gs.obstacles[i].x == gs.drone.x && gs.obstacles[i].y == gs.drone.y) {
-            respawn_obstacle(&gs, i);
+            respawn_obstacle(&gs, i); //find a new coordinates for the i-th obstacles
         }
     }
     
     // massage by process_targets 
     msgTargets msg_t;
     ssize_t nt = read(pipe_targets[0], &msg_t, sizeof(msg_t));
-    if (nt == sizeof(msg_t) && msg_t.type == 'T') {
+    if (nt == sizeof(msg_t) && msg_t.type == 'T') { //define the target as 'T'
         gs.num_targets = msg_t.num;
         if (gs.num_targets > MAX_TARGETS) gs.num_targets = MAX_TARGETS;
 
-        for (int i = 0; i < gs.num_targets; i++) {
+        for (int i = 0; i < gs.num_targets; i++) { //loop to associate every target to its (x,y) coordinates
             gs.targets[i].x = msg_t.targets[i].x;
             gs.targets[i].y = msg_t.targets[i].y;
         }
@@ -253,16 +275,16 @@ int main()
     for (int i = 0; i < gs.num_targets; i++) {
         int tx = gs.targets[i].x;
         int ty = gs.targets[i].y;
-        for (int j = 0; j < gs.num_obstacles; j++) {
+        for (int j = 0; j < gs.num_obstacles; j++) { //check if an obstacle already exists 
             if (gs.obstacles[j].x == tx && gs.obstacles[j].y == ty) {
-                respawn_target(&gs, i);
+                respawn_target(&gs, i); //find a new coordinates for the i-th target
             }
         }
     }
 
     // PHYSICS ---------------------------------------------------------------
-    // select
-    fd_set set;
+
+    fd_set set; //define set of the file to 'listen'
     int maxfd = (pipe_input[0] > pipe_drone[0] ? pipe_input[0] : pipe_drone[0]) + 1;
     
     while (1){
@@ -270,7 +292,7 @@ int main()
         FD_SET(pipe_input[0], &set);
         FD_SET(pipe_drone[0], &set);
 
-        select(maxfd, &set, NULL, NULL, NULL);
+        select(maxfd, &set, NULL, NULL, NULL); //listen to both input and drone process
 
         // INPUT 
         if (FD_ISSET(pipe_input[0], &set)) {
@@ -278,10 +300,10 @@ int main()
             read(pipe_input[0], &m, sizeof(m));
 
             if (m.type == 'Q') break; //quit
-            else if (m.type == 'I') {  //direction
+            else if (m.type == 'I') {  //direction: separation in x and y
                 int mx = m.dx;
                 int my = m.dy;
-                add_direction(&gs, mx, my);
+                add_direction(&gs, mx, my); //use to compute the input force in the pshysics process
             }
             else if (m.type == 'B') {  //brake
                 use_brake(&gs);
@@ -294,12 +316,11 @@ int main()
         // DRONE - drone dynamics
         if(FD_ISSET(pipe_drone[0], &set)){
             msgDrone m;
-            read(pipe_drone[0], &m, sizeof(m));
-
-            add_drone_dynamics(&gs);
+            read(pipe_drone[0], &m, sizeof(m)); //timer callout: update the drone dynamics
+            add_drone_dynamics(&gs); 
         }
 
-        //check position
+        //check position - respect of the map border 
         if (gs.drone.x < 0) gs.drone.x = 0;
         if (gs.drone.y < 0) gs.drone.y = 0;
         if (gs.drone.x >= gs.world_width) gs.drone.x = gs.world_width - 1;
@@ -312,7 +333,7 @@ int main()
         refresh_screen(&screen);
         }
 
-        //debug
+        //debug - print the useful values
         mvprintw(0, 0, "cmd:   fx=%.2f fy=%.2f", gs.fx_cmd, gs.fy_cmd);
         mvprintw(1, 0, "obst:  fx=%.2f fy=%.2f", gs.fx_obst, gs.fy_obst);
         mvprintw(2, 0, "fence: fx=%.2f fy=%.2f", gs.fx_fence, gs.fy_fence);
@@ -321,8 +342,7 @@ int main()
         clrtoeol();
         refresh();
 
-        // drone - target collide 
-        drone_target_collide(&gs);
+        drone_target_collide(&gs); //manages the collision
 
         render(&screen, &gs);
     }

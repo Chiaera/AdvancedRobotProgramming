@@ -1,3 +1,8 @@
+/* this file contains the function for the obstacles process
+    - define the number of obstacles
+    - pass the obstales coordinate to the server
+*/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -6,28 +11,29 @@
 
 #include "map.h"  
 
-typedef struct {
+typedef struct { //for the obstacle message, define the number of obstacles
     char type;  
     int num;
     Obstacle obstacles[MAX_OBSTACLES];
 } msgObstacles;
 
-
+//read the number of obstacles from the config file
 static void load_config(const char *path, Config *cfg){
     memset(cfg, 0, sizeof(Config));
 
-    //dafault values
+    //dafault values 
     cfg->world_width = 100;
     cfg->world_height = 30;
     cfg->num_obstacles = 0;
 
+    //read from the file config file
     FILE *f = fopen(path, "r");
     if(!f){
         fprintf(stderr, "process_obstacles cannot open %s, using the default values\n", path);
         return;
     }
 
-    //parsing
+    //parsing to define the values
     char line[256];
     while (fgets(line, sizeof(line), f)){
         char key[128], value[128];
@@ -42,33 +48,33 @@ static void load_config(const char *path, Config *cfg){
 
 
 int main(int argc, char *argv[]){
-    if(argc < 2){
+    if(argc < 2){ //check if there are arguments but the name
         fprintf(stderr, "use %s <write_fd>\n", argv[0]);
         return 1;
     }
-    int fd = atoi(argv[1]);
+    int fd = atoi(argv[1]); //from string to int
 
-    //parameters
+    //initialize the parameters file 
     Config cfg;
     load_config("bin/parameters.config", &cfg);
 
     //obstacles messages
     msgObstacles msg;
-    msg.type = 'O';
+    msg.type = 'O'; 
     msg.num = cfg.num_obstacles;
-    if(msg.num > MAX_OBSTACLES) msg.num = MAX_OBSTACLES;
+    if(msg.num > MAX_OBSTACLES) msg.num = MAX_OBSTACLES; //check on the number of obstacles
 
-    srand(time(NULL)^getpid());
+    srand(time(NULL)^getpid()); //function to generate random values
 
-    for(int i=0; i<msg.num; i++){
+    for(int i=0; i<msg.num; i++){  //for every obstacles send a message with its position
         int obstacle_x, obstacle_y;
         int valid_position=0;
 
-        while(!valid_position){
+        while(!valid_position){ //define new coordinates until the position is valid
             obstacle_x = rand() % cfg.world_width;
             obstacle_y = rand() % cfg.world_height;
 
-            //check position
+            //check position: if there another obstacle in that position
             int overlap_o = 0;
             for(int j=0; j<i; j++){
                 if(msg.obstacles[j].x==obstacle_x && msg.obstacles[j].y==obstacle_y){
@@ -76,7 +82,7 @@ int main(int argc, char *argv[]){
                     break;
                 }
             }
-            if(overlap_o) continue;
+            if(overlap_o) continue; //if the (x,y) coordinates are free, the position is valid 
             valid_position = 1;
         }
 

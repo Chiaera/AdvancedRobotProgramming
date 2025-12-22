@@ -1,3 +1,9 @@
+/* this file contains the process world which draw the world
+    - function to position the obstacles
+    - function to position the targets
+    - collision between drone-target
+*/
+
 #ifndef WORLD_H
 #define WORLD_H
 

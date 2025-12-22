@@ -1,3 +1,8 @@
+/* this file contains the map process
+    - all the structs for the project
+    - function to initializate the ncurses window
+*/
+
 #ifndef MAP_H
 #define MAP_H
 
@@ -11,32 +16,32 @@
 // Window struct
 typedef struct {
     WINDOW *win;
-    int width, height;
-    int startx, starty;
+    int width, height; //dimension
+    int startx, starty; //start position of the drone
 } Screen;
 
 
 // Drone struct
 typedef struct{
-	char ch;
-	double x,y;
-    double vx, vy; 
+	char ch; //type
+	double x,y; //coordinates of the drone
+    double vx, vy; //velocities along the directions
 } Drone;
 
 
-//obstacles
+//obstacles struct
 typedef struct {
-    int x, y;
+    int x, y; //coordinates of the obstacles
 } Obstacle;
 
 
-//targets
+//targets stryct
 typedef struct {
-    int x, y;
+    int x, y; //coordinates of the targets
 } Target;
 
 
-// Gamestate
+// Gamestate struct
 typedef struct {
     //drone
     Drone drone;
@@ -46,15 +51,19 @@ typedef struct {
     double k;
     double dt;
     
+    //repulsive (and actattive) forces
     double rho;
     double eta;
     double zeta;
     double tangent_gain;
 
+    //input forces
     double command_force; 
     double fx_cmd; 
     double fy_cmd; 
     double max_force;
+
+    //type of forces
     double fx_obst;
     double fy_obst;
     double fx_fence;
@@ -82,7 +91,7 @@ typedef struct {
 
 // static parameters from file
 typedef struct {
-    //physics
+    //physics 
     double mass;
     double k;
     double dt;

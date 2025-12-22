@@ -1,3 +1,8 @@
+/* this file contains the function for the targets process
+    - define the number of targets
+    - pass the targets coordinate to the server
+*/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -6,13 +11,14 @@
 
 #include "map.h"  
 
-typedef struct {
+typedef struct { //for the target message, define the number of targets
     char type;  
     int num;
     Target targets[MAX_TARGETS];
 } msgTargets;
 
 
+//read the number of obstacles from the config file
 static void load_config(const char *path, Config *cfg){
     memset(cfg, 0, sizeof(Config));
 
@@ -21,13 +27,14 @@ static void load_config(const char *path, Config *cfg){
     cfg->world_height = 30;
     cfg->num_targets = 0;
 
+    //read from the file config
     FILE *f = fopen(path, "r");
     if(!f){
         fprintf(stderr, "process_targets cannot open %s, using the default values\n", path);
         return;
     }
 
-    //parsing
+    //parsing to define the values
     char line[256];
     while (fgets(line, sizeof(line), f)){
         char key[128], value[128];
@@ -42,13 +49,13 @@ static void load_config(const char *path, Config *cfg){
 
 
 int main(int argc, char *argv[]){
-    if(argc < 2){
+    if(argc < 2){ //check if there are arguments but the name
         fprintf(stderr, "use %s <write_fd>\n", argv[0]);
         return 1;
     }
-    int fd = atoi(argv[1]);
+    int fd = atoi(argv[1]); //from string to int
 
-    //parameters
+    //initialize the parameters file 
     Config cfg;
     load_config("bin/parameters.config", &cfg);
 
@@ -56,15 +63,15 @@ int main(int argc, char *argv[]){
     msgTargets msg;
     msg.type = 'T';
     msg.num = cfg.num_targets;
-    if(msg.num > MAX_TARGETS) msg.num = MAX_TARGETS;
+    if(msg.num > MAX_TARGETS) msg.num = MAX_TARGETS; //check on the number of targets
 
-    srand(time(NULL)^getpid());
+    srand(time(NULL)^getpid()); //function to generate random values
 
-    for(int i=0; i<msg.num; i++){
+    for(int i=0; i<msg.num; i++){ //for every targets send a message with its position
         int target_x, target_y;
         int valid_position=0;
 
-        while(!valid_position){
+        while(!valid_position){ //define new coordinates until the position is valid
             target_x = rand() % cfg.world_width;
             target_y = rand() % cfg.world_height;
 
@@ -76,7 +83,7 @@ int main(int argc, char *argv[]){
                     break;
                 }
             }
-            if(overlap_t) continue;
+            if(overlap_t) continue; //if the (x,y) coordinates are free, the position is valid 
             valid_position = 1;
         }
 

@@ -1,3 +1,7 @@
+/* this file contains the process input
+    - function to enter input
+*/
+
 #ifndef PROCESS_INPUT_H
 #define PROCESS_INPUT_H
 
