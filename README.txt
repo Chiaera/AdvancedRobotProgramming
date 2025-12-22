@@ -17,3 +17,7 @@ ASSIGNMENT2:
 - logfile
 - process file
 - score
+
+
+ASSIGNMENT3:
+- protocol
