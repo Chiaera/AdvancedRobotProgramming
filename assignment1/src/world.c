@@ -17,7 +17,8 @@ void respawn_obstacle(GameState *g, int i) {
     while (!valid) { //loop until the position is valid
         valid = 1;  
 
-        //random position for the drone
+        //random position within world bounds
+        // Used for respawning to avoid overlaps
         ox = rand() % g->world_width;
         oy = rand() % g->world_height;
 

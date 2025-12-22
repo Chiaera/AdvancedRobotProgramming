@@ -71,6 +71,7 @@ int main(int argc, char *argv[]){
         int valid_position=0;
 
         while(!valid_position){ //define new coordinates until the position is valid
+            //coordinates are discrete integers in range [0, world_width) x [0, world_height)
             obstacle_x = rand() % cfg.world_width;
             obstacle_y = rand() % cfg.world_height;
 

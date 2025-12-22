@@ -40,7 +40,9 @@ void use_brake(GameState *gs){
 }
 
 
-// OBSTACLES - repulsion
+// OBSTACLES - repulsion (using Khatib's potential field)
+//radial: distance from obstacle
+//tangential: 'swirling' effect
 static inline double pow_distance(double dx, double dy){ 
     double pow_d = dx*dx + dy*dy; //compute the pow distance d^2
     return pow_d;
@@ -60,13 +62,13 @@ static Force add_obstacles_repulsion(GameState *gs){
         double dy = (double)gs->drone.y - (double)gs->obstacles[i].y;
 
         double pow_d = pow_distance(dx, dy); //find the pow distance d^2
-        if (pow_d < 1e-6){  //consider a minimal distance
+        if (pow_d < 1e-6){  //consider a minimal distance - prevent division by zero when drone exactly on obstacle center
             pow_d = 1e-6;
         }
         double d = sqrt(pow_d); //find the vector distance d
         
         if(d<rho){
-            // F_repulsion = eta * (1/d - 1/rho) * (1/d^2) * ((q - q_obs)/d), d=ρ(q)
+            //Khatib potential field: F_repulsion = eta * (1/d - 1/rho) * (1/d^2) * ((q - q_obs)/d), d=ρ(q)
             double F_repulsion = eta * (1/d - 1/rho) * (1/ pow_d);
 
             //radiant component (versor: (q - q_obs)/d)
@@ -75,10 +77,10 @@ static Force add_obstacles_repulsion(GameState *gs){
             double Fr_x = F_repulsion*nx; //correct radiant force along x
             double Fr_y = F_repulsion*ny; //correct radiant force along y
 
-            //tangent component (default: swirl to left)
-            double tx = -ny; //direction of the swirl
+            //tangent component (creates "swirling" effect around obstacles)
+            double tx = -ny; //default swirl to left
             double ty = nx;
-            double Ft_mag = beta * fabs(F_repulsion); //booster to create the swirl effect
+            double Ft_mag = beta * fabs(F_repulsion); //magnitude proportional to radial repulsion (perpendicular direction)
             double Ft_x = Ft_mag * tx; //correct tangent force along x
             double Ft_y = Ft_mag * ty; //correct tangent force along y
 
@@ -97,6 +99,7 @@ static Force add_obstacles_repulsion(GameState *gs){
 // FENCE - repulsion
 static Force add_fence_repulsion(GameState *gs){
     Force F = {0,0}; //default force
+    //add scale factor to prevent fence force from overwhelming other forces
     double rho = gs->rho*0.5; //distance of wall's influence
     double eta = gs->eta*0.2; //gain of wall's repulsion
 
@@ -108,7 +111,7 @@ static Force add_fence_repulsion(GameState *gs){
 
     if (bl < rho) { //near the border left 
         double d = bl; 
-        if (d < 1e-3) d = 1e-3; //consider a minimal distance 
+        if (d < 1e-3) d = 1e-3; //prevent division by zero
         // F_fence = eta * (1/d - 1/rho) * (1/d) * (+1.0)
         double F_fence  = eta * (1.0/d - 1.0/rho) * (1.0/(d*d));
         F.fx += F_fence * (+1.0); //to right (+x)
@@ -232,7 +235,7 @@ void add_drone_dynamics(GameState *gs){
         double dy = new_y - oy;
         double d2 = dx*dx + dy*dy;
 
-        if (d2 < r_coll * r_coll) { //consider a minimal distance
+        if (d2 < r_coll * r_coll) { //prevent division by zero
             if(d2 < 1e-9){
                 d2 = 1e-9;
             }
