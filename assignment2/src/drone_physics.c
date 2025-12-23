@@ -99,9 +99,29 @@ static Force add_obstacles_repulsion(GameState *gs){
 // FENCE - repulsion
 static Force add_fence_repulsion(GameState *gs){
     Force F = {0,0}; //default force
+
+    //managment the proximity obstacle-fence
+    int near_obstacle = 0;
+    double min_obst_dist = 1e12;
+    for (int i = 0; i < gs->num_obstacles; i++) {
+        double dx = gs->drone.x - (double)gs->obstacles[i].x;
+        double dy = gs->drone.y - (double)gs->obstacles[i].y;
+        double d2 = dx*dx + dy*dy;
+        if (d2 < min_obst_dist) {
+            min_obst_dist = d2;
+        }
+    }
+    if (sqrt(min_obst_dist) < 3.0) {
+        near_obstacle = 1;
+    }
+
     //add scale factor to prevent fence force from overwhelming other forces
     double rho = gs->rho*0.5; //distance of wall's influence
     double eta = gs->eta*0.2; //gain of wall's repulsion
+
+    if (near_obstacle) { //addictional scaling if a obstacles is near the fence
+        eta *= 0.3; 
+    }
 
     //border distance
     double bl = (double)gs->drone.x; //left
@@ -192,9 +212,36 @@ void add_drone_dynamics(GameState *gs){
     Force F_fence = add_fence_repulsion(gs); //compute the repulsive force from the fence
     //Force F_attraction = add_targets_attraction(gs);
 
+    //add forces to managment the collisions
+    Force F_collision = {0,0};
+    double r_collision = 1.8; //used in the proximity of the obstacle
+    double r2_collision = r_collision*r_collision;
+
+    for (int i = 0; i < gs->num_obstacles; i++) {
+        double dx = gs->drone.x - (double)gs->obstacles[i].x;
+        double dy = gs->drone.y - (double)gs->obstacles[i].y;
+        double d2 = dx*dx + dy*dy;
+        
+        if (d2 < r2_collision) {
+            if (d2 < 1e-9) {
+                d2 = 1e-9;
+            }
+            double d = sqrt(d2);
+            
+            //high forces on the obstacles -> no overlap with obstacle
+            double strength = gs->max_force * 15.0 * (r_collision / d - 1.0);
+            
+            //forces along the directions x and y
+            double nx = dx / d;
+            double ny = dy / d;
+            F_collision.fx += strength * nx;
+            F_collision.fy += strength * ny;
+        }
+    }
+
     // F_tot = F_input + F_repulsion + F_fence + F_attraction
-    double fx = F_input.fx + F_repulsion.fx + F_fence.fx /*+ F_attraction.fx*/; //total force along x
-    double fy = F_input.fy + F_repulsion.fy + F_fence.fy /*+ F_attraction.fy*/; //total force along y
+    double fx = F_input.fx + F_repulsion.fx + F_fence.fx + F_collision.fx /*+ F_attraction.fx*/; //total force along x
+    double fy = F_input.fy + F_repulsion.fy + F_fence.fy + F_collision.fy /*+ F_attraction.fy*/; //total force along y
 
     //save the total force in the GameState struct
     gs->fx_tot = fx;
@@ -222,9 +269,9 @@ void add_drone_dynamics(GameState *gs){
     double new_x = gs->drone.x + gs->drone.vx * gs->dt;
     double new_y = gs->drone.y + gs->drone.vy * gs->dt;
 
-    //threshold
-    double r_coll = 1.3;  
-    double r2 = r_coll*r_coll;
+    //threshold for checking the position
+    double r_position = 1.3;  //to correct the position after the integration of the forces
+    double r2 = r_position*r_position;
 
     for (int i = 0; i < gs->num_obstacles; ++i) {
         //save the coordinates in for the i-th obstacle
@@ -244,10 +291,9 @@ void add_drone_dynamics(GameState *gs){
             double d = sqrt(d2);
 
             //threshold around the obstacle
-            double scale = r_coll / d;
+            double scale = r_position / d;
             new_x = ox + dx * scale;
             new_y = oy + dy * scale;
-            break; 
         }
     }
 
