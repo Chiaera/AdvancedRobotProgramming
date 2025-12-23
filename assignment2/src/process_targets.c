@@ -1,4 +1,4 @@
-/* this file contains the function for the targets process
+/* this file contains the function for positioning the target (used in process world)
     - define the number of targets
     - pass the targets coordinate to the server
 */
@@ -14,10 +14,12 @@
 typedef struct { //for the target message, define the number of targets
     char type;  
     int num;
+    int x, y;
     Target targets[MAX_TARGETS];
 } msgTargets;
 
 
+//----------------------------------------------------------------------------------------------------------FUNCTION
 //read the number of obstacles from the config file
 static void load_config(const char *path, Config *cfg){
     memset(cfg, 0, sizeof(Config));
@@ -47,7 +49,43 @@ static void load_config(const char *path, Config *cfg){
     fclose(f);
 }
 
+//send tick to relocate targets
+static void relocation_targets(int fd, const Config *cfg, int n_targets){
+    const int RELOC_PERIOD_MS = 30000; //30 seconds
 
+    while (1) {
+        msgTargets msgR;
+        msgR.type = 'R';
+        msgR.num  = n_targets;
+
+        for (int i = 0; i < msgR.num; i++) {
+            int valid = 0;
+            while (!valid) { //random position of target until the position is valid
+                valid = 1;
+                msgR.x = rand() % cfg->world_width;
+                msgR.y = rand() % cfg->world_height;
+
+                for (int j = 0; j < i; j++) {
+                    //check overlap with other targets
+                    if (msgR.targets[j].x == msgR.x && msgR.targets[j].y == msgR.y) { 
+                        valid = 0; 
+                        break; 
+                    }
+                }
+            }
+            //save new position
+            msgR.targets[i].x = msgR.x;
+            msgR.targets[i].y = msgR.y;
+        }
+
+        write(fd, &msgR, sizeof(msgR));
+        usleep(RELOC_PERIOD_MS * 1000);
+    }
+}
+
+
+
+//----------------------------------------------------------------------------------------------------------MAIN
 int main(int argc, char *argv[]){
     if(argc < 2){ //check if there are arguments but the name
         fprintf(stderr, "use %s <write_fd>\n", argv[0]);
@@ -92,7 +130,8 @@ int main(int argc, char *argv[]){
         msg.targets[i].y = target_y;
     }
 
-    write(fd, &msg, sizeof(msg));
-    close(fd);
+    write(fd, &msg, sizeof(msg)); //spawn the targets
+    relocation_targets(fd, &cfg, msg.num); //after tick - respawn
+    //close(fd); - NO closure: it is needed for the tick
     return 0;
 }

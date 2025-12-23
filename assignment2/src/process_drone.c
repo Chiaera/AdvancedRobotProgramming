@@ -13,7 +13,8 @@ typedef struct  { //define the drone struct, divide the position in direction x 
     int x, y;
 } msgDrone;
 
-void move_drone(int fd){ //messagge to update the position
+//send a tick to update the position
+void move_drone(int fd){ 
     while(1){
         msgDrone msg = {'D', 0, 0};
         write(fd, &msg, sizeof(msg));

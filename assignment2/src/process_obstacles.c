@@ -1,4 +1,4 @@
-/* this file contains the function for the obstacles process
+/* this file contains the function for positioning the obstacles (world proces)
     - define the number of obstacles
     - pass the obstales coordinate to the server
 */

@@ -44,6 +44,7 @@ typedef struct  { //use for the drone message, x and y to check the drone positi
 typedef struct { //use for the target messages, define the number of the targets
     char type;
     int num;
+    int x, y; //used to change the targets position
     Target targets[MAX_TARGETS];
 } msgTargets;
 
@@ -185,7 +186,7 @@ int main()
     // drone
     pid_t pid_drone = fork();
     if(pid_drone == 0){ //child process of the drone process
-        close(pipe_drone[0]); 
+        close(pipe_drone[0]);
         char fd_str[16];
         snprintf(fd_str, sizeof(fd_str), "%d", pipe_drone[1]);
         execlp(//"konsole", "konsole", "-e",
@@ -202,13 +203,10 @@ int main()
     // target
     pid_t pid_targets = fork();
     if (pid_targets == 0) { //child process of the targets process
-        close(pipe_targets[0]);
+        close(pipe_targets[0]); 
         char fd_str[16];
         snprintf(fd_str, sizeof(fd_str), "%d", pipe_targets[1]);
-        execlp("konsole",
-            "konsole",
-            "-e",
-            "./build/bin/process_targets", 
+        execlp("./build/bin/process_targets", "./build/bin/process_targets", 
             fd_str,
             (char *)NULL);
         perror("execlp process_targets failed");
@@ -269,6 +267,7 @@ int main()
     // massage by process_targets 
     msgTargets msg_t;
     ssize_t nt = read(pipe_targets[0], &msg_t, sizeof(msg_t));
+
     if (nt == sizeof(msg_t) && msg_t.type == 'T') { //define the target as 'T'
         gs.num_targets = msg_t.num;
         if (gs.num_targets > MAX_TARGETS) gs.num_targets = MAX_TARGETS;
@@ -280,7 +279,6 @@ int main()
     } else {
         gs.num_targets = 0;
     }
-    close(pipe_targets[0]);
     //position check
     for (int i = 0; i < gs.num_targets; i++) {
         int tx = gs.targets[i].x;
@@ -292,15 +290,20 @@ int main()
         }
     }
 
-    // PHYSICS ---------------------------------------------------------------
+    // PHYSICS and TARGET---------------------------------------------------------------
 
     fd_set set; //define set of the file to 'listen'
-    int maxfd = (pipe_input[0] > pipe_drone[0] ? pipe_input[0] : pipe_drone[0]) + 1;
+    int maxfd = pipe_input[0];
+    //select the number of descriptor
+    if (pipe_drone[0] > maxfd) maxfd = pipe_drone[0];
+    if (pipe_targets[0] > maxfd) maxfd = pipe_targets[0];
+    maxfd += 1;
     
     while (1){
         FD_ZERO(&set);
         FD_SET(pipe_input[0], &set);
         FD_SET(pipe_drone[0], &set);
+        FD_SET(pipe_targets[0], &set);
 
         int rc = select(maxfd, &set, NULL, NULL, NULL);//listen to both input and drone process
         if (rc < 0) {
@@ -340,6 +343,32 @@ int main()
             DBG("[DEBUG] drone tick msg: type=%c x=%d y=%d\n", m.type, m.x, m.y);
 
             add_drone_dynamics(&gs); 
+        }
+
+        // TARGET - respawn
+        if (FD_ISSET(pipe_targets[0], &set)) {
+            msgTargets mt;
+            ssize_t nr = read(pipe_targets[0], &mt, sizeof(mt)); //timer callout: change targets position
+            if (nr != sizeof(mt)) continue; //error of reading
+
+            if (mt.type == 'R') {
+                int n = mt.num;
+                if (n > gs.num_targets) {
+                    n = gs.num_targets; // relocation of the remains targets
+                }
+                for (int i = 0; i < n; i++) {
+                    gs.targets[i] = mt.targets[i]; //new vector for the remains targets 
+                }
+                //check overlap with obstacles
+                for (int i = 0; i < n; i++) {
+                    for (int j = 0; j < gs.num_obstacles; j++) {
+                        if (gs.targets[i].x == gs.obstacles[j].x && gs.targets[i].y == gs.obstacles[j].y) {
+                            respawn_target(&gs, i);
+                            break;
+                        }
+                    }
+                }
+            }
         }
 
         //check position - respect of the map border 
