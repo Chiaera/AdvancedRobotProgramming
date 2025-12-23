@@ -350,6 +350,8 @@ int main()
             if (nr != sizeof(mt)) continue; //error of reading
 
             if (mt.type == 'R') {
+                DBG("[DEBUG] Target respawn: %d targets relocating\n", mt.num);
+
                 int n = mt.num;
                 if (n > gs.num_targets) {
                     n = gs.num_targets; // relocation of the remains targets
@@ -377,6 +379,8 @@ int main()
             if (no != sizeof(mo)) continue; //error of reading
 
             if (mo.type == 'R') {
+                DBG("[DEBUG] Obstacle respawn: %d obstacles relocating\n", mo.num);
+                
                 int n = mo.num;
                 if (n > gs.num_obstacles) {
                     n = gs.num_obstacles; // relocation of the obstacles

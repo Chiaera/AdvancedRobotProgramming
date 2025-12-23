@@ -24,12 +24,6 @@ typedef struct { //for the obstacle message, define the number of obstacles
 static void load_config(const char *path, Config *cfg){
     memset(cfg, 0, sizeof(Config));
 
-    //dafault values 
-    cfg->world_width = 100;
-    cfg->world_height = 30;
-    cfg->num_obstacles = 0;
-    cfg->obstacle_reloc = 30000;
-
     //read from the file config file
     FILE *f = fopen(path, "r");
     if(!f){

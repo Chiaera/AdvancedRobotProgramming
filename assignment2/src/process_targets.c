@@ -24,12 +24,6 @@ typedef struct { //for the target message, define the number of targets
 static void load_config(const char *path, Config *cfg){
     memset(cfg, 0, sizeof(Config));
 
-    //dafault values
-    cfg->world_width = 100;
-    cfg->world_height = 30;
-    cfg->num_targets = 0;
-    cfg -> target_reloc = 30000;
-
     //read from the file config
     FILE *f = fopen(path, "r");
     if(!f){
@@ -54,6 +48,8 @@ static void load_config(const char *path, Config *cfg){
 //send tick to relocate targets
 static void relocation_targets(int fd, const Config *cfg, int n_targets){
     while (1) {
+        usleep(cfg-> target_reloc*1000); // 30000 ms -> 30 seconds
+
         msgTargets msgR;
         msgR.type = 'R';  //'R' = respawn
         msgR.num  = n_targets;
@@ -84,7 +80,6 @@ static void relocation_targets(int fd, const Config *cfg, int n_targets){
             perror("Failed to send relocation message of targets");
             break;  
         }
-        usleep(cfg-> target_reloc*1000); // 30000 ms -> 30 seconds
     }
 }
 
