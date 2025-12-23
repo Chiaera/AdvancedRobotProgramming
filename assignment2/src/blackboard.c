@@ -44,7 +44,6 @@ typedef struct  { //use for the drone message, x and y to check the drone positi
 typedef struct { //use for the target messages, define the number of the targets
     char type;
     int num;
-    int x, y; //used to change the targets position
     Target targets[MAX_TARGETS];
 } msgTargets;
 

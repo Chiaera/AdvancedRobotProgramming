@@ -223,7 +223,7 @@ void add_drone_dynamics(GameState *gs){
     double new_y = gs->drone.y + gs->drone.vy * gs->dt;
 
     //threshold
-    double r_coll = 1.5;  
+    double r_coll = 1.2;  
     double r2 = r_coll*r_coll;
 
     for (int i = 0; i < gs->num_obstacles; ++i) {

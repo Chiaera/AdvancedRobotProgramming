@@ -14,7 +14,6 @@
 typedef struct { //for the target message, define the number of targets
     char type;  
     int num;
-    int x, y;
     Target targets[MAX_TARGETS];
 } msgTargets;
 
@@ -28,6 +27,7 @@ static void load_config(const char *path, Config *cfg){
     cfg->world_width = 100;
     cfg->world_height = 30;
     cfg->num_targets = 0;
+    cfg -> target_reloc = 30000;
 
     //read from the file config
     FILE *f = fopen(path, "r");
@@ -44,6 +44,7 @@ static void load_config(const char *path, Config *cfg){
             if (!strcmp(key, "WORLD_WIDTH"))  cfg->world_width  = atoi(value);
             else if (!strcmp(key, "WORLD_HEIGHT")) cfg->world_height = atoi(value);
             else if (!strcmp(key, "NUM_TARGETS")) cfg->num_targets = atoi(value);
+            else if (!strcmp(key, "TARGET_RELOC_MS")) cfg->target_reloc = atoi(value);
         }
     }
     fclose(f);
@@ -51,35 +52,38 @@ static void load_config(const char *path, Config *cfg){
 
 //send tick to relocate targets
 static void relocation_targets(int fd, const Config *cfg, int n_targets){
-    const int RELOC_PERIOD_MS = 30000; //30 seconds
-
     while (1) {
         msgTargets msgR;
         msgR.type = 'R';
         msgR.num  = n_targets;
+        int x,y;
 
         for (int i = 0; i < msgR.num; i++) {
             int valid = 0;
             while (!valid) { //random position of target until the position is valid
                 valid = 1;
-                msgR.x = rand() % cfg->world_width;
-                msgR.y = rand() % cfg->world_height;
+                x = rand() % cfg->world_width;
+                y = rand() % cfg->world_height;
 
                 for (int j = 0; j < i; j++) {
                     //check overlap with other targets
-                    if (msgR.targets[j].x == msgR.x && msgR.targets[j].y == msgR.y) { 
+                    if (msgR.targets[j].x == x && msgR.targets[j].y == y) { 
                         valid = 0; 
                         break; 
                     }
                 }
             }
             //save new position
-            msgR.targets[i].x = msgR.x;
-            msgR.targets[i].y = msgR.y;
+            msgR.targets[i].x = x;
+            msgR.targets[i].y = y;
         }
 
-        write(fd, &msgR, sizeof(msgR));
-        usleep(RELOC_PERIOD_MS * 1000);
+        ssize_t Rw = write(fd, &msgR, sizeof(msgR));
+        if (Rw != sizeof(msgR)) { //debug
+            perror("Failed to send relocation message");
+            break;  
+        }
+        usleep(cfg-> target_reloc*1000); // 30000 ms -> 30 seconds
     }
 }
 
@@ -97,7 +101,7 @@ int main(int argc, char *argv[]){
     Config cfg;
     load_config("bin/parameters.config", &cfg);
 
-    //obstacles messages
+    //targets messages
     msgTargets msg;
     msg.type = 'T';
     msg.num = cfg.num_targets;
@@ -110,28 +114,27 @@ int main(int argc, char *argv[]){
         int valid_position=0;
 
         while(!valid_position){ //define new coordinates until the position is valid
+            valid_position = 1;
             //coordinates are discrete integers in range [0, world_width) x [0, world_height)
             target_x = rand() % cfg.world_width;
             target_y = rand() % cfg.world_height;
 
-            //check overlap with another target
-            int overlap_t = 0;
-            for(int j=0; j<i; j++){
-                if(msg.targets[j].x==target_x && msg.targets[j].y==target_y){
-                    overlap_t = 1;
+            //check overlap with another target 
+            for (int j = 0; j < i; j++) {
+                if (msg.targets[j].x == target_x && msg.targets[j].y == target_y) {
+                    valid_position = 0;
                     break;
                 }
             }
-            if(overlap_t) continue; //if the (x,y) coordinates are free, the position is valid 
-            valid_position = 1;
         }
-
+        
+        //save new positions
         msg.targets[i].x = target_x;
         msg.targets[i].y = target_y;
     }
 
     write(fd, &msg, sizeof(msg)); //spawn the targets
     relocation_targets(fd, &cfg, msg.num); //after tick - respawn
-    //close(fd); - NO closure: it is needed for the tick
+    close(fd); 
     return 0;
 }

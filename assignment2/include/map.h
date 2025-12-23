@@ -113,6 +113,7 @@ typedef struct {
 
     //target
     int num_targets;
+    int target_reloc;   
 
     //obstacles
     int num_obstacles;
