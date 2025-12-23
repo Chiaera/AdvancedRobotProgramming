@@ -45,7 +45,7 @@ static void load_config(const char *path, Config *cfg){
             if (!strcmp(key, "WORLD_WIDTH"))  cfg->world_width  = atoi(value);
             else if (!strcmp(key, "WORLD_HEIGHT")) cfg->world_height = atoi(value);
             else if (!strcmp(key, "NUM_OBSTACLES")) cfg->num_obstacles = atoi(value);
-            else if (!strcmp(key, "RELOC_PERIOD_MS")) cfg->obstacle_reloc = atoi(value);
+            else if (!strcmp(key, "RELOC_PERIOD_ms")) cfg->obstacle_reloc = atoi(value);
         }
     }
     fclose(f);
