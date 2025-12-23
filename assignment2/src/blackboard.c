@@ -202,7 +202,7 @@ int main()
     // target
     pid_t pid_targets = fork();
     if (pid_targets == 0) { //child process of the targets process
-        close(pipe_targets[0]); 
+        //close(pipe_targets[0]); - open for tick
         char fd_str[16];
         snprintf(fd_str, sizeof(fd_str), "%d", pipe_targets[1]);
         execlp("./build/bin/process_targets", "./build/bin/process_targets", 
@@ -218,13 +218,10 @@ int main()
     // obstacles
     pid_t pid_obstacles = fork();
     if(pid_obstacles == 0){ //child process of the obstacles process
-        close(pipe_obstacles[0]);
+        //close(pipe_obstacles[0]); - need to be open for the tick
         char fd_str[16];
         snprintf(fd_str, sizeof(fd_str), "%d", pipe_obstacles[1]);
-        execlp("konsole",
-            "konsole",
-            "-e",
-            "./build/bin/process_obstacles",
+        execlp("./build/bin/process_obstacles", "./build/bin/process_obstacles", 
             fd_str,
             (char *)NULL);
         perror("execlp process_obstacles failed");
@@ -289,22 +286,24 @@ int main()
         }
     }
 
-    // PHYSICS and TARGET---------------------------------------------------------------
+    // PHYSICS and RELOCATION---------------------------------------------------------------
 
     fd_set set; //define set of the file to 'listen'
-    int maxfd = pipe_input[0];
     //select the number of descriptor
+    int maxfd = pipe_input[0];
     if (pipe_drone[0] > maxfd) maxfd = pipe_drone[0];
     if (pipe_targets[0] > maxfd) maxfd = pipe_targets[0];
+    if (pipe_obstacles[0] > maxfd) maxfd = pipe_obstacles[0];  
     maxfd += 1;
-    
+
     while (1){
         FD_ZERO(&set);
         FD_SET(pipe_input[0], &set);
         FD_SET(pipe_drone[0], &set);
         FD_SET(pipe_targets[0], &set);
+        FD_SET(pipe_obstacles[0], &set); 
 
-        int rc = select(maxfd, &set, NULL, NULL, NULL);//listen to both input and drone process
+        int rc = select(maxfd, &set, NULL, NULL, NULL); //listen to all the set of processes
         if (rc < 0) {
             if (errno == EINTR) continue;   // resize
                 perror("select");
@@ -358,6 +357,7 @@ int main()
                 for (int i = 0; i < n; i++) {
                     gs.targets[i] = mt.targets[i]; //new vector for the remains targets 
                 }
+                
                 //check overlap with obstacles
                 for (int i = 0; i < n; i++) {
                     for (int j = 0; j < gs.num_obstacles; j++) {
@@ -365,6 +365,32 @@ int main()
                             respawn_target(&gs, i);
                             break;
                         }
+                    }
+                }
+            }
+        }
+
+        // OBSTACLES - respawn
+        if (FD_ISSET(pipe_obstacles[0], &set)) {
+            msgObstacles mo;
+            ssize_t no = read(pipe_obstacles[0], &mo, sizeof(mo)); //timer callout: change obstacles position
+            if (no != sizeof(mo)) continue; //error of reading
+
+            if (mo.type == 'R') {
+                int n = mo.num;
+                if (n > gs.num_obstacles) {
+                    n = gs.num_obstacles; // relocation of the obstacles
+                }
+                
+                for (int i = 0; i < n; i++) { //new vector of obstacles used for the respawn
+                    gs.obstacles[i] = mo.obstacles[i]; 
+                }
+
+                //check position
+                for (int i = 0; i < n; i++) {
+                    //no overlap with drone
+                    if (gs.obstacles[i].x == (int)gs.drone.x && gs.obstacles[i].y == (int)gs.drone.y) {
+                        respawn_obstacle(&gs, i);
                     }
                 }
             }

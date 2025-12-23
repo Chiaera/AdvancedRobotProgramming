@@ -1,6 +1,7 @@
 /* this file contains the function for positioning the target (used in process world)
     - define the number of targets
     - pass the targets coordinate to the server
+    - respawn the targets after 30 seconds
 */
 
 #include <stdio.h>
@@ -44,7 +45,7 @@ static void load_config(const char *path, Config *cfg){
             if (!strcmp(key, "WORLD_WIDTH"))  cfg->world_width  = atoi(value);
             else if (!strcmp(key, "WORLD_HEIGHT")) cfg->world_height = atoi(value);
             else if (!strcmp(key, "NUM_TARGETS")) cfg->num_targets = atoi(value);
-            else if (!strcmp(key, "TARGET_RELOC_MS")) cfg->target_reloc = atoi(value);
+            else if (!strcmp(key, "RELOC_PERIOD_MS")) cfg->target_reloc = atoi(value);
         }
     }
     fclose(f);
@@ -54,7 +55,7 @@ static void load_config(const char *path, Config *cfg){
 static void relocation_targets(int fd, const Config *cfg, int n_targets){
     while (1) {
         msgTargets msgR;
-        msgR.type = 'R';
+        msgR.type = 'R';  //'R' = respawn
         msgR.num  = n_targets;
         int x,y;
 
@@ -80,7 +81,7 @@ static void relocation_targets(int fd, const Config *cfg, int n_targets){
 
         ssize_t Rw = write(fd, &msgR, sizeof(msgR));
         if (Rw != sizeof(msgR)) { //debug
-            perror("Failed to send relocation message");
+            perror("Failed to send relocation message of targets");
             break;  
         }
         usleep(cfg-> target_reloc*1000); // 30000 ms -> 30 seconds

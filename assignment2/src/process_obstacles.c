@@ -1,6 +1,7 @@
 /* this file contains the function for positioning the obstacles (world proces)
     - define the number of obstacles
     - pass the obstales coordinate to the server
+    - respawn the obstacles after 30 seconds
 */
 
 #include <stdio.h>
@@ -17,6 +18,8 @@ typedef struct { //for the obstacle message, define the number of obstacles
     Obstacle obstacles[MAX_OBSTACLES];
 } msgObstacles;
 
+
+//--------------------------------------------------------------------------------------------------------FUNCTIONS
 //read the number of obstacles from the config file
 static void load_config(const char *path, Config *cfg){
     memset(cfg, 0, sizeof(Config));
@@ -25,6 +28,7 @@ static void load_config(const char *path, Config *cfg){
     cfg->world_width = 100;
     cfg->world_height = 30;
     cfg->num_obstacles = 0;
+    cfg->obstacle_reloc = 30000;
 
     //read from the file config file
     FILE *f = fopen(path, "r");
@@ -41,12 +45,52 @@ static void load_config(const char *path, Config *cfg){
             if (!strcmp(key, "WORLD_WIDTH"))  cfg->world_width  = atoi(value);
             else if (!strcmp(key, "WORLD_HEIGHT")) cfg->world_height = atoi(value);
             else if (!strcmp(key, "NUM_OBSTACLES")) cfg->num_obstacles = atoi(value);
+            else if (!strcmp(key, "RELOC_PERIOD_MS")) cfg->obstacle_reloc = atoi(value);
         }
     }
     fclose(f);
 }
 
+//send tick to relocate obstacles
+static void relocation_obstacles(int fd, const Config *cfg, int n_obstacles){
+    while (1) {
+        usleep(cfg-> obstacle_reloc*1000); // 30000 ms -> 30 seconds
 
+        msgObstacles msgR;
+        msgR.type = 'R'; //'R' = respawn
+        msgR.num  = n_obstacles;
+        int x,y;
+
+        for (int i = 0; i < msgR.num; i++) {
+            int valid = 0;
+            while (!valid) { //random position of obstacle until the position is valid
+                valid = 1;
+                x = rand() % cfg->world_width;
+                y = rand() % cfg->world_height;
+
+                for (int j = 0; j < i; j++) {
+                    //check overlap with other obstacles
+                    if (msgR.obstacles[j].x == x && msgR.obstacles[j].y == y) { 
+                        valid = 0; 
+                        break; 
+                    }
+                }
+            }
+            //save new position
+            msgR.obstacles[i].x = x;
+            msgR.obstacles[i].y = y;
+        }
+
+        ssize_t Rw = write(fd, &msgR, sizeof(msgR));
+        if (Rw != sizeof(msgR)) { //debug
+            perror("Failed to send relocation message of obstacles");
+            break;  
+        }
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------------MAIN
 int main(int argc, char *argv[]){
     if(argc < 2){ //check if there are arguments but the name
         fprintf(stderr, "use %s <write_fd>\n", argv[0]);
@@ -92,6 +136,7 @@ int main(int argc, char *argv[]){
     }
 
     write(fd, &msg, sizeof(msg));
+    relocation_obstacles(fd, &cfg, msg.num); //after tick - respawn
     close(fd);
     return 0;
 }
