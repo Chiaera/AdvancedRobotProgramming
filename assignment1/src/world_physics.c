@@ -209,14 +209,14 @@ void add_drone_dynamics(GameState *gs){
     gs->drone.vx += ax * gs->dt;
     gs->drone.vy += ay * gs->dt;
 
-    /*//Check on the max velocity - no tunnelling effect
+    //Check on the max velocity - no tunnelling effect
     double max_vel = gs->max_force / gs->k; 
     double current_vel_sq = gs->drone.vx * gs->drone.vx + gs->drone.vy * gs->drone.vy;
     if (current_vel_sq > max_vel * max_vel) {
         double current_vel = sqrt(current_vel_sq);
         gs->drone.vx *= max_vel / current_vel;
         gs->drone.vy *= max_vel / current_vel;
-    }*/
+    }
 
     //Euler - save the new position
     double new_x = gs->drone.x + gs->drone.vx * gs->dt;

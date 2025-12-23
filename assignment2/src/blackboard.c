@@ -5,7 +5,14 @@
     - read the obstacle position from the msgObstacle and add the element on the map
     - read the target position from the msgTarget and add the element on the map
     - management the physics of the world
-*/
+
+    - utility for the watchdog
+        - create the shared memory for the watchdog (used as a heartbeat table)
+        - initializes the heartbeat table to zero
+        - reflesh the slot to segnalize its activity
+ */
+
+#define _POSIX_C_SOURCE 200809L
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -19,6 +26,13 @@
 #include <math.h>
 #include <time.h>
 
+
+#include <fcntl.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <stdint.h>
+
+#include "heartbeat.h"
 #include "map.h"
 #include "world.h"
 #include "drone_physics.h"
@@ -151,6 +165,38 @@ int main()
     init_screen(&screen);
     init_game(&gs, &cfg);
 
+    // SHM ----------------------------------------------------------------------------------------------------------------------
+    
+    //create shared memory
+    int hb_fd = shm_open(HB_SHM_NAME, O_CREAT | O_RDWR, 0666);
+    if (hb_fd < 0) { 
+        perror("shm_open"); 
+        exit(1); 
+    }
+
+    //resize shm to fit the struct
+    if (ftruncate(hb_fd, sizeof(HeartbeatTable)) < 0) {
+        perror("ftruncate"); 
+        exit(1); 
+    }
+
+    //mapping shm to the memory address
+    HeartbeatTable *hb = mmap(NULL, sizeof(HeartbeatTable), PROT_READ | PROT_WRITE, MAP_SHARED, hb_fd, 0);
+    if (hb == MAP_FAILED) { 
+        perror("mmap"); 
+        exit(1); 
+    }
+
+    //initialize the heartbeat table to zero
+    memset(hb, 0, sizeof(*hb));
+
+    //save in the blackboard info in its slot
+    hb->entries[HB_SLOT_BLACKBOARD].pid = getpid();
+    hb->entries[HB_SLOT_BLACKBOARD].last_seen_ms = now_ms(); //tells the watchdog it is stil active
+
+
+    // FORK ------------------------------------------------------------------------------------------------------------------------
+
     // define the pipes
     int pipe_input[2];
     int pipe_drone[2];
@@ -161,7 +207,6 @@ int main()
     pipe(pipe_obstacles);
     pipe(pipe_targets);
 
-    // FORK ---------------------------------------------------
     // input
     pid_t pid_input = fork();
 
@@ -286,7 +331,7 @@ int main()
         }
     }
 
-    // PHYSICS and RELOCATION---------------------------------------------------------------
+    // SELECT---------------------------------------------------------------
 
     fd_set set; //define set of the file to 'listen'
     //select the number of descriptor
@@ -297,13 +342,21 @@ int main()
     maxfd += 1;
 
     while (1){
+        //reflesh the slot (for the wathcdog) every iteration - it is indipendent from pipes
+        hb->entries[HB_SLOT_BLACKBOARD].last_seen_ms = now_ms();
+
         FD_ZERO(&set);
         FD_SET(pipe_input[0], &set);
         FD_SET(pipe_drone[0], &set);
         FD_SET(pipe_targets[0], &set);
         FD_SET(pipe_obstacles[0], &set); 
 
-        int rc = select(maxfd, &set, NULL, NULL, NULL); //listen to all the set of processes
+        //timer to update the heartbeat - small timeout for a periodic refresh
+        struct timeval tv;
+        tv.tv_sec = 0;
+        tv.tv_usec = 100000; // 100 ms
+
+        int rc = select(maxfd, &set, NULL, NULL, &tv); //listen to all the set of processes
         if (rc < 0) {
             if (errno == EINTR) continue;   // resize
                 perror("select");
@@ -432,5 +485,11 @@ int main()
     }
 
     endwin();
+
+    //close the heartbeat
+    munmap(hb, sizeof(*hb));
+    close(hb_fd);
+    shm_unlink(HB_SHM_NAME);
+
     return 0;
 }
