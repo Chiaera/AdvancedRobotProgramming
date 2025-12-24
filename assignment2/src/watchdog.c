@@ -27,18 +27,22 @@
 
 //macro to print the heartbeat table (debug)
 #ifdef DEBUG
-static FILE *logf = NULL;
+static FILE *g_log_file = NULL;
 
 static void log_open(const char *name) {
-    if (!logf) {
-        logf = fopen(name, "a");
+    if (!g_log_file) {
+        g_log_file = fopen(name, "a");
+        if (!g_log_file) {
+            perror("fopen log failed");
+            g_log_file = stderr;   // fallback: MAI NULL
+        }
     }
 }
 
 #define LOGF(name, ...) do { \
     log_open(name); \
-    fprintf(logf, __VA_ARGS__); \
-    fflush(logf); \
+    fprintf(g_log_file, __VA_ARGS__); \
+    fflush(g_log_file); \
 } while(0)
 #else
 #define LOGF(name, ...) do {} while(0)
@@ -100,14 +104,14 @@ int main(int argc, char **argv) {
 
             //to check the time before the last heartbeat
             if (now > last && (now - last) > timeout_ms) {
-                LOGF("watchdog.log", "[DEBUG] watchdog msg: TIMEOUT slot=%d pid=%d last=%llums ago\n",
+                LOGF("logs/watchdog.log", "[DEBUG] watchdog msg: TIMEOUT slot=%d pid=%d last=%llums ago\n",
                     i, (int)p,
                     (unsigned long long)(now - last));
                 goto timeout;
             }
 
             //DEBUG - print table    
-            LOGF("watchdog.log", "[DEBUG] watchdog msg: slot=%d pid=%d last=%llu now=%llu diff=%llu\n",                
+            LOGF("logs/watchdog.log", "[DEBUG] watchdog msg: slot=%d pid=%d last=%llu now=%llu diff=%llu\n",                
                 i, (int)p, 
                 (unsigned long long)last,
                 (unsigned long long)now,

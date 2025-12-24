@@ -3,9 +3,11 @@ SRC_DIR := src
 INC_DIR := include
 BUILD_DIR := build
 BIN_DIR := $(BUILD_DIR)/bin
+
 # compiler
 CC := gcc
 CFLAGS := -Wall -Wextra -g -I$(INC_DIR)
+
 # debug (0=no debug, 1=debug)
 DEBUG ?= 0
 ifeq ($(DEBUG),1)
@@ -14,13 +16,20 @@ endif
 
 LDFLAGS_NCURSES := -lncurses
 LDFLAGS_MATH := -lm
-# include
+
+# include (bin)
 BLACKBOARD := $(BIN_DIR)/blackboard
 INPUT_PROCESS := $(BIN_DIR)/process_input
 DRONE_PROCESS := $(BIN_DIR)/process_drone
 OBSTACLES_PROCESS := $(BIN_DIR)/process_obstacles
 TARGET_PROCESS := $(BIN_DIR)/process_targets
 WATCHDOG_PROCESS := $(BIN_DIR)/watchdog
+
+# logs
+LOG_DIR := logs
+BLACKBOARD_LOG := $(LOG_DIR)/blackboard.log
+WATCHDOG_LOG := $(LOG_DIR)/watchdog.log
+
 # src
 BLACKBOARD_SRC := $(SRC_DIR)/blackboard.c \
                   $(SRC_DIR)/map.c \
@@ -36,9 +45,11 @@ WATCHDOG_SRC := $(SRC_DIR)/watchdog.c
 # default rule
 all: $(BLACKBOARD) $(INPUT_PROCESS) $(DRONE_PROCESS) $(OBSTACLES_PROCESS) $(TARGET_PROCESS) $(WATCHDOG_PROCESS)
 
-# ensure bin dir exists
+# ensure dirs exists
 $(BIN_DIR):
 	mkdir -p $(BIN_DIR)
+$(LOG_DIR):
+	mkdir -p $(LOG_DIR)
 
 # blackboard
 $(BLACKBOARD): $(BLACKBOARD_SRC) | $(BIN_DIR)
@@ -59,13 +70,26 @@ $(OBSTACLES_PROCESS): $(OBSTACLES_SRC) | $(BIN_DIR)
 $(WATCHDOG_PROCESS): $(WATCHDOG_SRC) | $(BIN_DIR)
 	$(CC) $(CFLAGS) $(WATCHDOG_SRC) -o $@
 
-
 # run everything
-run: all
+run: all | $(LOG_DIR)
+	rm -f $(BLACKBOARD_LOG) $(WATCHDOG_LOG)
 	konsole -e ./build/bin/blackboard &
 
+# open live logs in new terminals
+tail-logs: | $(LOG_DIR)
+	konsole -e bash -lc "tail -f $(WATCHDOG_LOG)" &
+	konsole -e bash -lc "tail -f $(BLACKBOARD_LOG)" &
+
+# kill all processes
+kill:
+	-pkill -9 blackboard process_input process_drone process_targets process_obstacles watchdog || true
+
+#clean dirs
 clean:
-	rm -rf $(BUILD_DIR)
+	rm -rf $(BUILD_DIR) $(LOG_DIR)
+
+clean_logs:
+	rm -rf $(LOG_DIR)
 
 
-.PHONY: all clean run
+.PHONY: all clean run kill clean-logs tail-logs
