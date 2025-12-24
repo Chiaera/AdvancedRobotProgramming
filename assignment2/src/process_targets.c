@@ -2,15 +2,24 @@
     - define the number of targets
     - pass the targets coordinate to the server
     - respawn the targets after 30 seconds
+    
+    - use for the watchdog
+        - maps the posix shared memory (heartbeat table)
+        - periodically updates its slow with monotonic timestamp
 */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <time.h>
+#define _POSIX_C_SOURCE 200809L
 #include <string.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <fcntl.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <time.h>
 
 #include "map.h"  
+#include "heartbeat.h"
 
 typedef struct { //for the target message, define the number of targets
     char type;  
@@ -45,10 +54,32 @@ static void load_config(const char *path, Config *cfg){
     fclose(f);
 }
 
+//update the heartbeat when the process 'sleeping' betwen the tick -> the watchdog will see the process is still active
+static void sleep_with_heartbeat(HeartbeatTable *hb, int slot, uint64_t total_ms) {
+    const uint64_t step_ms = 100; //100ms 
+
+    while (total_ms > 0) {
+        hb->entries[slot].last_seen_ms = now_ms();
+
+        uint64_t cur = (total_ms > step_ms) ? step_ms : total_ms;
+
+        struct timespec ts = { //used to sleep
+            .tv_sec  = cur / 1000,
+            .tv_nsec = (cur % 1000) * 1000000L
+        };
+        nanosleep(&ts, NULL);
+
+        total_ms -= cur;
+    }
+}
+
+
 //send tick to relocate targets
-static void relocation_targets(int fd, const Config *cfg, int n_targets){
+static void relocation_targets(int fd, const Config *cfg, int n_targets, HeartbeatTable *hb, int slot){
     while (1) {
-        usleep(cfg-> target_reloc*1000); // 30000 ms -> 30 seconds
+        sleep_with_heartbeat(hb, slot, (uint64_t)cfg->target_reloc); //not used 'usleep' because we want to tells the activity during the sleep status
+
+        hb->entries[slot].last_seen_ms = now_ms(); //update the slot to tell it is active
 
         msgTargets msgR;
         msgR.type = 'R';  //'R' = respawn
@@ -87,12 +118,38 @@ static void relocation_targets(int fd, const Config *cfg, int n_targets){
 
 //----------------------------------------------------------------------------------------------------------MAIN
 int main(int argc, char *argv[]){
-    if(argc < 2){ //check if there are arguments but the name
-        fprintf(stderr, "use %s <write_fd>\n", argv[0]);
+    //for the WATCHDOG 
+    if (argc < 4) {
+        /*expected args:
+            1. write_fd
+            2. shm_name ('/heartbeat')
+            3. slot index ('3' for HB_SLOT_TARGETS)
+        */
+        fprintf(stderr, "Usage: %s <write_fd> <shm_name> <slot>\n", argv[0]);
         return 1;
     }
-    int fd = atoi(argv[1]); //from string to int
+    //read the argv
+    int fd = atoi(argv[1]);
+    const char *shm_name = argv[2];
+    int slot = atoi(argv[3]);
+    //open existing shared memory created by blackboard
+    int hb_fd = shm_open(shm_name, O_RDWR, 0666);
+    if (hb_fd < 0) { 
+        perror("process_targets shm_open"); 
+        return 1; 
+    }
+    //map heartbeat table
+    HeartbeatTable *hb = mmap(NULL, sizeof(HeartbeatTable), PROT_READ | PROT_WRITE, MAP_SHARED, hb_fd, 0);
+    if (hb == MAP_FAILED) { 
+        perror("process_targets mmap"); 
+        close(hb_fd); 
+        return 1; 
+    }
+    //save PID and update activity
+    hb->entries[slot].pid = getpid();
+    hb->entries[slot].last_seen_ms = now_ms();
 
+    
     //initialize the parameters file 
     Config cfg;
     load_config("bin/parameters.config", &cfg);
@@ -130,7 +187,7 @@ int main(int argc, char *argv[]){
     }
 
     write(fd, &msg, sizeof(msg)); //spawn the targets
-    relocation_targets(fd, &cfg, msg.num); //after tick - respawn
+    relocation_targets(fd, &cfg, msg.num, hb, slot); //after tick - respawn
     close(fd); 
     return 0;
 }

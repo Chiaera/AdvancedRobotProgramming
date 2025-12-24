@@ -178,7 +178,7 @@ int main()
 
     //save handler
     struct sigaction sa;
-    //memset(&sa, 0, sizeof(sa));
+    memset(&sa, 0, sizeof(sa));
     sa.sa_handler = on_watchdog_stop;
     sigaction(SIGUSR1, &sa, NULL);
 
@@ -297,9 +297,17 @@ int main()
         //close(pipe_targets[0]); - open for tick
         char fd_str[16];
         snprintf(fd_str, sizeof(fd_str), "%d", pipe_targets[1]);
-        execlp("./build/bin/process_targets", "./build/bin/process_targets", 
+        
+        char slot_str[8];
+        snprintf(slot_str, sizeof(slot_str), "%d", HB_SLOT_TARGETS);
+
+        execlp("./build/bin/process_targets",
+            "./build/bin/process_targets",
             fd_str,
-            (char *)NULL);
+            HB_SHM_NAME,
+            slot_str,
+            (char*)NULL);
+
         perror("execlp process_targets failed");
         exit(1);
     } else if(pid_targets == -1){ //error
@@ -313,9 +321,16 @@ int main()
         //close(pipe_obstacles[0]); - need to be open for the tick
         char fd_str[16];
         snprintf(fd_str, sizeof(fd_str), "%d", pipe_obstacles[1]);
-        execlp("./build/bin/process_obstacles", "./build/bin/process_obstacles", 
+        
+        char slot_str[8]; //used for the watchdog processes
+        snprintf(slot_str, sizeof(slot_str), "%d", HB_SLOT_OBSTACLES);
+        execlp("./build/bin/process_obstacles",
+            "./build/bin/process_obstacles",
             fd_str,
+            HB_SHM_NAME,
+            slot_str,
             (char *)NULL);
+
         perror("execlp process_obstacles failed");
         exit(1);
     } else if(pid_obstacles == -1){ //error
