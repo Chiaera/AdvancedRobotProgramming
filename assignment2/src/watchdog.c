@@ -24,7 +24,28 @@
 
 #include "heartbeat.h"
 
-//SIGKILL to use after timeout
+
+//macro to print the heartbeat table (debug)
+#ifdef DEBUG
+static FILE *logf = NULL;
+
+static void log_open(const char *name) {
+    if (!logf) {
+        logf = fopen(name, "a");
+    }
+}
+
+#define LOGF(name, ...) do { \
+    log_open(name); \
+    fprintf(logf, __VA_ARGS__); \
+    fflush(logf); \
+} while(0)
+#else
+#define LOGF(name, ...) do {} while(0)
+#endif
+
+
+//SIGKILL to kill all processes after timeout
 static void kill_all(const HeartbeatTable *hb) {
     for (int i = 0; i < HB_SLOTS; i++) {
         pid_t p = hb->entries[i].pid;
@@ -79,13 +100,27 @@ int main(int argc, char **argv) {
 
             //to check the time before the last heartbeat
             if (now > last && (now - last) > timeout_ms) {
-                fprintf(stderr, "[WATCHDOG] TIMEOUT slot=%d pid=%d last=%llu now=%llu\n", i, (int)p, (unsigned long long)last, (unsigned long long)now);
+                LOGF("watchdog.log", "[DEBUG] watchdog msg: TIMEOUT slot=%d pid=%d last=%llums ago\n",
+                    i, (int)p,
+                    (unsigned long long)(now - last));
                 goto timeout;
             }
+
+            //DEBUG - print table    
+            LOGF("watchdog.log", "[DEBUG] watchdog msg: slot=%d pid=%d last=%llu now=%llu diff=%llu\n",                
+                i, (int)p, 
+                (unsigned long long)last,
+                (unsigned long long)now,
+                (unsigned long long)(now-last));
         }
 
-        usleep(100000); //100
+        //used for the 'nanosleep' function
+        struct timespec ts_check;
+        ts_check.tv_sec = 0;
+        ts_check.tv_nsec = 20 * 1000 * 1000;   // 20ms
+        nanosleep(&ts_check, NULL);
         continue;
+
 
 timeout:
         //cleanup ncurses window (blackboard) before killing the process
@@ -94,8 +129,11 @@ timeout:
             kill(bb, SIGUSR1);
         }
 
-        //delay for the edwin()
-        usleep(200000); // 200ms
+        //delay for the edwin() - used for the 'nanosleep' function
+        struct timespec ts_edwin;
+        ts_edwin.tv_sec = 0;
+        ts_edwin.tv_nsec = 200 * 1000 * 1000; // 200 ms
+        nanosleep(&ts_edwin, NULL);
 
         //kill all registered processe
         kill_all(hb);

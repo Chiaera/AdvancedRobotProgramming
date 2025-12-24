@@ -6,6 +6,12 @@ BIN_DIR := $(BUILD_DIR)/bin
 # compiler
 CC := gcc
 CFLAGS := -Wall -Wextra -g -I$(INC_DIR)
+# debug (0=no debug, 1=debug)
+DEBUG ?= 0
+ifeq ($(DEBUG),1)
+CFLAGS += -DDEBUG
+endif
+
 LDFLAGS_NCURSES := -lncurses
 LDFLAGS_MATH := -lm
 # include

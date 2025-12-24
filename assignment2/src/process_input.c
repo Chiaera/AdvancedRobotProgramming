@@ -17,9 +17,11 @@
 #include <fcntl.h>      
 #include <sys/mman.h>  
 #include <sys/stat.h>  
+#include <time.h>
 
 #include "process_input.h"
 #include "heartbeat.h"
+
 
 //-----------------------------------------------------------------------STRUCT
 typedef struct { //for the input force in the x and y coordinates
@@ -37,7 +39,6 @@ KeyBox keymap[] = { //input map
     {1, 1, 's'}, {1, 2, 'd'}, {1, 3, 'f'},
     {2, 1, 'x'}, {2, 2, 'c'}, {2, 3, 'v'}
 };
-
 
 //-----------------------------------------------------------------------FUNCTIONS
 
@@ -101,12 +102,17 @@ void draw_keys(WINDOW* win, char highlight)
 void set_input(int fd, WINDOW* win, HeartbeatTable *hb, int slot){
     nodelay(stdscr, TRUE);
 
+    //used for the 'nanosleep' function
+    struct timespec ts;
+    ts.tv_sec = 0;
+    ts.tv_nsec = 20 * 1000 * 1000; // 20 ms
+
     while(1){ 
         hb->entries[slot].last_seen_ms = now_ms();   //tells to watchdog it is active
 
         int ch = getch();
         if (ch == ERR) {        
-            usleep(20000);
+            nanosleep(&ts, NULL);
             continue;            
         }
 
@@ -139,7 +145,7 @@ void set_input(int fd, WINDOW* win, HeartbeatTable *hb, int slot){
         }*/
         
         write(fd, &msg, sizeof(msg));
-        usleep(20000);
+        nanosleep(&ts, NULL);
     }
 }
 

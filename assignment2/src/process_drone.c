@@ -33,7 +33,11 @@ void move_drone(int fd, HeartbeatTable *hb, int slot){
 
         msgDrone msg = {'D', 0, 0};
         write(fd, &msg, sizeof(msg));
-        usleep(20000); //20ms
+        //used for the 'nanosleep' function
+        struct timespec ts;
+        ts.tv_sec = 0;
+        ts.tv_nsec = 20 * 1000 * 1000; // 20 ms
+        nanosleep(&ts, NULL);
     }
 }
 
