@@ -14,6 +14,7 @@ INPUT_PROCESS := $(BIN_DIR)/process_input
 DRONE_PROCESS := $(BIN_DIR)/process_drone
 OBSTACLES_PROCESS := $(BIN_DIR)/process_obstacles
 TARGET_PROCESS := $(BIN_DIR)/process_targets
+WATCHDOG_PROCESS := $(BIN_DIR)/watchdog
 # src
 BLACKBOARD_SRC := $(SRC_DIR)/blackboard.c \
                   $(SRC_DIR)/map.c \
@@ -23,9 +24,11 @@ INPUT_SRC := $(SRC_DIR)/process_input.c
 DRONE_SRC := $(SRC_DIR)/process_drone.c
 OBSTACLES_SRC := $(SRC_DIR)/process_obstacles.c
 TARGET_SRC := $(SRC_DIR)/process_targets.c
+WATCHDOG_SRC := $(SRC_DIR)/watchdog.c
 
-# default
-all: $(BLACKBOARD) $(INPUT_PROCESS) $(DRONE_PROCESS) $(OBSTACLES_PROCESS) $(TARGET_PROCESS)
+
+# default rule
+all: $(BLACKBOARD) $(INPUT_PROCESS) $(DRONE_PROCESS) $(OBSTACLES_PROCESS) $(TARGET_PROCESS) $(WATCHDOG_PROCESS)
 
 # ensure bin dir exists
 $(BIN_DIR):
@@ -46,6 +49,10 @@ $(TARGET_PROCESS): $(TARGET_SRC) | $(BIN_DIR)
 # obstacles
 $(OBSTACLES_PROCESS): $(OBSTACLES_SRC) | $(BIN_DIR)
 	$(CC) $(CFLAGS) $(OBSTACLES_SRC) -o $@
+# watchdog
+$(WATCHDOG_PROCESS): $(WATCHDOG_SRC) | $(BIN_DIR)
+	$(CC) $(CFLAGS) $(WATCHDOG_SRC) -o $@
+
 
 # run everything
 run: all

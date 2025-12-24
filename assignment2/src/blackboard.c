@@ -32,6 +32,8 @@
 #include <sys/stat.h>
 #include <stdint.h>
 
+#include <signal.h>
+
 #include "heartbeat.h"
 #include "map.h"
 #include "world.h"
@@ -133,6 +135,15 @@ void apply_new_parameters(GameState *gs, Config *cfg) {
     gs->world_height = cfg->world_height;
 }
 
+//for the WATCHDOG
+static volatile sig_atomic_t g_stop = 0; //used for the shotdown request
+
+static void on_watchdog_stop(int sig) {
+    (void)sig;
+    g_stop = 1;
+}
+
+
 
 // ----------------------------------------------------------- MAIN
 
@@ -145,6 +156,13 @@ int main()
     int old_cols  = COLS;
 
     initscr();
+
+    //save handler
+    struct sigaction sa;
+    memset(&sa, 0, sizeof(sa));
+    sa.sa_handler = on_watchdog_stop;
+    sigaction(SIGUSR1, &sa, NULL);
+
 
     start_color();
     //yellow target
@@ -225,7 +243,7 @@ int main()
             HB_SHM_NAME,
             slot_str,
             (char *)NULL);
-        perror("execlp process_drone failed");
+        perror("execlp process_input failed");
         exit(1);
     } else if (pid_input < 0) { // error
         perror("fork failed for process_input");
@@ -284,6 +302,25 @@ int main()
     } else if(pid_obstacles == -1){ //error
         perror("fork failed for process_obstacles");
         exit(EXIT_FAILURE);
+    }
+
+    //watchdog
+    pid_t pid_watchdog = fork();
+    if (pid_watchdog == 0) {
+        char timeout_str[16];
+        snprintf(timeout_str, sizeof(timeout_str), "%d", 2000); // 2s timeout
+
+        execlp("./build/bin/watchdog",
+            "./build/bin/watchdog",
+            HB_SHM_NAME,
+            timeout_str,
+            (char *)NULL);
+
+        perror("execlp watchdog failed");
+        _exit(1);
+    } else if (pid_watchdog < 0) {
+        perror("fork failed for watchdog");
+        exit(1);
     }
 
     //close write 
@@ -352,8 +389,10 @@ int main()
     maxfd += 1;
 
     while (1){
-        //reflesh the slot (for the wathcdog) every iteration - it is indipendent from pipes
-        hb->entries[HB_SLOT_BLACKBOARD].last_seen_ms = now_ms();
+
+        if (g_stop) break;   // watchdog requested shutdown
+       
+        hb->entries[HB_SLOT_BLACKBOARD].last_seen_ms = now_ms();  //reflesh the slot (for the wathcdog) every iteration - it is indipendent from pipes
 
         FD_ZERO(&set);
         FD_SET(pipe_input[0], &set);
