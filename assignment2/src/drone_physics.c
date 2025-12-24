@@ -229,7 +229,7 @@ void add_drone_dynamics(GameState *gs){
             double d = sqrt(d2);
             
             //high forces on the obstacles -> no overlap with obstacle
-            double strength = gs->max_force * 15.0 * (r_collision / d - 1.0);
+            double strength = gs->max_force * 16.0 * (r_collision / d - 1.0);
             
             //forces along the directions x and y
             double nx = dx / d;

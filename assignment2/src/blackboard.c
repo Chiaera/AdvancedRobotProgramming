@@ -214,13 +214,18 @@ int main()
         close(pipe_input[0]); 
         char fd_str[16];
         snprintf(fd_str, sizeof(fd_str), "%d", pipe_input[1]);
+
+        char slot_str[8]; //used for the watchdog processes
+        snprintf(slot_str, sizeof(slot_str), "%d", HB_SLOT_INPUT);
         execlp("konsole",
             "konsole",
             "-e",
             "./build/bin/process_input",
             fd_str,
+            HB_SHM_NAME,
+            slot_str,
             (char *)NULL);
-        perror("execlp process_input failed");
+        perror("execlp process_drone failed");
         exit(1);
     } else if (pid_input < 0) { // error
         perror("fork failed for process_input");
@@ -233,9 +238,14 @@ int main()
         close(pipe_drone[0]);
         char fd_str[16];
         snprintf(fd_str, sizeof(fd_str), "%d", pipe_drone[1]);
-        execlp(//"konsole", "konsole", "-e",
-            "./build/bin/process_drone", "./build/bin/process_drone",
+        
+        char slot_str[8]; //used for the watchdog processes
+        snprintf(slot_str, sizeof(slot_str), "%d", HB_SLOT_DRONE);
+        execlp("./build/bin/process_drone",
+            "./build/bin/process_drone",
             fd_str,
+            HB_SHM_NAME,
+            slot_str,
             (char *)NULL);
         perror("execlp process_drone failed");
         exit(1);

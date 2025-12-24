@@ -1,18 +1,25 @@
 /* this file contains the function for the process input
     - read input from the keybord
     - pass the given input to the server
+
+    - use for the watchdog
+        - maps the posix shared memory (heartbeat table)
+        - periodically updates its slow with monotonic timestamp
 */
 
-#ifndef PROCESS_INPUT_H
-#define PROCESS_INPUT_H
+#define _POSIX_C_SOURCE 200809L
 
 #include <unistd.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <ncurses.h>
 #include <ctype.h>
+#include <fcntl.h>      
+#include <sys/mman.h>  
+#include <sys/stat.h>  
 
 #include "process_input.h"
+#include "heartbeat.h"
 
 //-----------------------------------------------------------------------STRUCT
 typedef struct { //for the input force in the x and y coordinates
@@ -91,10 +98,12 @@ void draw_keys(WINDOW* win, char highlight)
 }
 
 //function to define the key input
-void set_input(int fd, WINDOW* win){
+void set_input(int fd, WINDOW* win, HeartbeatTable *hb, int slot){
     nodelay(stdscr, TRUE);
 
     while(1){ 
+        hb->entries[slot].last_seen_ms = now_ms();   //tells to watchdog it is active
+
         int ch = getch();
         if (ch == ERR) {        
             usleep(20000);
@@ -137,12 +146,38 @@ void set_input(int fd, WINDOW* win){
 
 int main(int argc, char *argv[])
 {
-    if (argc < 2) { //check if there is an argument but the name
-        fprintf(stderr, "Usage: %s <write_fd>\n", argv[0]);
+    if (argc < 4) {
+        /*expected args:
+            1. write_fd
+            2. shm_name ('/heartbeat')
+            3. slot index ('1' for HB_SLOT_INPUT)
+        */
+        fprintf(stderr, "Usage: %s <write_fd> <shm_name> <slot>\n", argv[0]);
         return 1;
     }
+    //read the argv
+    int fd = atoi(argv[1]);
+    const char *shm_name = argv[2];
+    int slot = atoi(argv[3]);
 
-    int fd = atoi(argv[1]); //from string to int
+    //open existing shared memory created by blackboard
+    int hb_fd = shm_open(shm_name, O_RDWR, 0666);
+    if (hb_fd < 0) { 
+        perror("process_input shm_open"); 
+        return 1; 
+    }
+
+    //map heartbeat table
+    HeartbeatTable *hb = mmap(NULL, sizeof(HeartbeatTable), PROT_READ | PROT_WRITE, MAP_SHARED, hb_fd, 0);
+    if (hb == MAP_FAILED) { 
+        perror("process_input mmap"); 
+        close(hb_fd); 
+        return 1; 
+    }
+
+    //save PID
+    hb->entries[slot].pid = getpid();
+
 
     //function to the ncurses window
     initscr();
@@ -161,12 +196,12 @@ int main(int argc, char *argv[])
 
     draw_keys(win_keys, 0); //call the draw keys function
 
-    set_input(fd, win_keys); //define the input in the message
+    set_input(fd, win_keys, hb, slot); //define the input in the message
 
     endwin();
+    munmap(hb, sizeof(*hb));
+    close(hb_fd);
     close(fd);
+
     return 0;
 }
-
-
-#endif
