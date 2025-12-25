@@ -23,8 +23,8 @@
 #include <errno.h>
 
 #include "heartbeat.h"
-#define LOG_PATH "logs/"
 
+#define LOG_PATH "logs/"
 
 //macro to print the heartbeat table (debug)
 #ifdef DEBUG
@@ -42,12 +42,13 @@ static void log_open(const char *name) {
 
 #define LOGF(name, ...) do { \
     log_open(name); \
-    fprintf(g_log_file, __VA_ARGS__); \
+    fprintf(g_log_file, "[BLACKBOARD] " __VA_ARGS__); \
     fflush(g_log_file); \
 } while(0)
 #else
 #define LOGF(name, ...) do {} while(0)
 #endif
+
 
 
 //SIGKILL to kill all processes after timeout
@@ -76,6 +77,10 @@ int main(int argc, char **argv) {
     const char *shm_name = argv[1];
     uint64_t timeout_ms = (uint64_t)strtoull(argv[2], NULL, 10);
 
+    LOGF(LOG_PATH "watchdog.log", "watchdog awakes\n");
+    LOGF(LOG_PATH "watchdog.log", "Timeout: %llums | Check interval: 20ms\n", 
+         (unsigned long long)timeout_ms);
+
     // Open existing shared memory created by blackboard
     int hb_fd = shm_open(shm_name, O_RDWR, 0666);
     if (hb_fd < 0) { perror("watchdog shm_open"); return 1; }
@@ -87,6 +92,7 @@ int main(int argc, char **argv) {
         close(hb_fd); 
         return 1; 
     }
+    LOGF(LOG_PATH "watchdog.log", "Heartbeat table mapped successfully\n");
 
     while (1) { //monitoring loop
         uint64_t now = now_ms();
@@ -105,18 +111,20 @@ int main(int argc, char **argv) {
 
             //to check the time before the last heartbeat
             if (now > last && (now - last) > timeout_ms) {
-                LOGF(LOG_PATH"watchdog.log", "[DEBUG] watchdog msg: TIMEOUT slot=%d pid=%d last=%llums ago\n",
+                LOGF(LOG_PATH "watchdog.log", "[DEBUG] watchdog msg: TIMEOUT slot=%d pid=%d last=%llums ago\n",
                     i, (int)p,
                     (unsigned long long)(now - last));
                 goto timeout;
             }
 
-            //DEBUG - print table    
-            LOGF(LOG_PATH"watchdog.log", "[DEBUG] watchdog msg: slot=%d pid=%d last=%llu now=%llu diff=%llu\n",                
-                i, (int)p, 
-                (unsigned long long)last,
-                (unsigned long long)now,
-                (unsigned long long)(now-last));
+            //DEBUG - print table every second 
+            static uint64_t last_debug_time = 0;
+            if (now - last_debug_time > 1000) {
+                LOGF(LOG_PATH "watchdog.log", "[DEBUG] slot=%d pid=%d alive (last_seen=%llums ago)\n",                
+                    i, (int)p, 
+                    (unsigned long long)(now-last));
+                last_debug_time = now;
+            }
         }
 
         //used for the 'nanosleep' function
@@ -131,6 +139,7 @@ timeout:
         //cleanup ncurses window (blackboard) before killing the process
         pid_t bb = hb->entries[HB_SLOT_BLACKBOARD].pid;
         if (bb > 0) {
+            LOGF(LOG_PATH "watchdog.log", "[DEBUG] Sending SIGUSR1 to blackboard (PID %d)\n", (int)bb);
             kill(bb, SIGUSR1);
         }
 
@@ -141,6 +150,7 @@ timeout:
         nanosleep(&ts_edwin, NULL);
 
         //kill all registered processe
+        LOGF(LOG_PATH "watchdog.log", "Killing all registered processes\n");
         kill_all(hb);
 
         munmap(hb, sizeof(*hb));
