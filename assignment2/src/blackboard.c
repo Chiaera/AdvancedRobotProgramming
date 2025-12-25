@@ -38,6 +38,7 @@
 #include "map.h"
 #include "world.h"
 #include "drone_physics.h"
+#define LOG_PATH "logs/"
 
 //debug
 #ifdef DEBUG
@@ -48,7 +49,7 @@ static void log_open(const char *name) {
         g_log_file = fopen(name, "a");
         if (!g_log_file) {
             perror("fopen log failed");
-            g_log_file = stderr;   // fallback: MAI NULL
+            g_log_file = stderr;   // fallback: no NULL
         }
     }
 }
@@ -452,7 +453,7 @@ int main()
             ssize_t ri = read(pipe_input[0], &m, sizeof(m));         
             if (ri != sizeof(m)) continue;  //error of reading
             
-            LOGF("logs/blackboard.log", "[DEBUG] input msg: type=%c dx=%d dy=%d\n", m.type, m.dx, m.dy);
+            LOGF(LOG_PATH"blackboard.log", "[DEBUG] input msg: type=%c dx=%d dy=%d\n", m.type, m.dx, m.dy);
 
             if (m.type == 'Q') break; //quit
             else if (m.type == 'I') {  //direction: separation in x and y
@@ -474,7 +475,7 @@ int main()
             ssize_t rd= read(pipe_drone[0], &m, sizeof(m));         //timer callout: update the drone dynamics
             if (rd != sizeof(m)) continue;  //error of reading
             
-            LOGF("logs/blackboard.log","[DEBUG] drone tick msg: type=%c x=%d y=%d\n", m.type, m.x, m.y);
+            LOGF(LOG_PATH"blackboard.log","[DEBUG] drone tick msg: type=%c x=%d y=%d\n", m.type, m.x, m.y);
 
             add_drone_dynamics(&gs); 
         }
@@ -486,7 +487,7 @@ int main()
             if (nr != sizeof(mt)) continue; //error of reading
 
             if (mt.type == 'R') {
-                LOGF("logs/blackboard.log","[DEBUG] Target respawn: %d targets relocating\n", mt.num);
+                LOGF(LOG_PATH"blackboard.log","[DEBUG] Target respawn: %d targets relocating\n", mt.num);
 
                 int n = mt.num;
                 if (n > gs.num_targets) {
@@ -515,7 +516,7 @@ int main()
             if (no != sizeof(mo)) continue; //error of reading
 
             if (mo.type == 'R') {
-                LOGF("logs/blackboard.log","[DEBUG] Obstacle respawn: %d obstacles relocating\n", mo.num);
+                LOGF(LOG_PATH"blackboard.log","[DEBUG] Obstacle respawn: %d obstacles relocating\n", mo.num);
                 
                 int n = mo.num;
                 if (n > gs.num_obstacles) {

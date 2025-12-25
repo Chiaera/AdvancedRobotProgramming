@@ -72,7 +72,7 @@ $(WATCHDOG_PROCESS): $(WATCHDOG_SRC) | $(BIN_DIR)
 
 # run everything
 run: all | $(LOG_DIR)
-	rm -f $(BLACKBOARD_LOG) $(WATCHDOG_LOG)
+	touch $(BLACKBOARD_LOG) $(WATCHDOG_LOG)
 	konsole -e ./build/bin/blackboard &
 
 # open live logs in new terminals

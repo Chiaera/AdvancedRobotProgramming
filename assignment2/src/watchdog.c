@@ -23,6 +23,7 @@
 #include <errno.h>
 
 #include "heartbeat.h"
+#define LOG_PATH "logs/"
 
 
 //macro to print the heartbeat table (debug)
@@ -34,7 +35,7 @@ static void log_open(const char *name) {
         g_log_file = fopen(name, "a");
         if (!g_log_file) {
             perror("fopen log failed");
-            g_log_file = stderr;   // fallback: MAI NULL
+            g_log_file = stderr;   // fallback: no NULL
         }
     }
 }
@@ -104,14 +105,14 @@ int main(int argc, char **argv) {
 
             //to check the time before the last heartbeat
             if (now > last && (now - last) > timeout_ms) {
-                LOGF("logs/watchdog.log", "[DEBUG] watchdog msg: TIMEOUT slot=%d pid=%d last=%llums ago\n",
+                LOGF(LOG_PATH"watchdog.log", "[DEBUG] watchdog msg: TIMEOUT slot=%d pid=%d last=%llums ago\n",
                     i, (int)p,
                     (unsigned long long)(now - last));
                 goto timeout;
             }
 
             //DEBUG - print table    
-            LOGF("logs/watchdog.log", "[DEBUG] watchdog msg: slot=%d pid=%d last=%llu now=%llu diff=%llu\n",                
+            LOGF(LOG_PATH"watchdog.log", "[DEBUG] watchdog msg: slot=%d pid=%d last=%llu now=%llu diff=%llu\n",                
                 i, (int)p, 
                 (unsigned long long)last,
                 (unsigned long long)now,
