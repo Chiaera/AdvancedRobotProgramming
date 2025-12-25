@@ -57,7 +57,7 @@ static void log_open(const char *name) {
 
 #define LOGF(name, ...) do { \
     log_open(name); \
-    fprintf(g_log_file, "[BLACKBOARD] " __VA_ARGS__); \
+    fprintf(g_log_file, "[BLACKBOARD DBG] " __VA_ARGS__); \
     fflush(g_log_file); \
 } while(0)
 #else
@@ -159,7 +159,7 @@ static volatile sig_atomic_t g_stop = 0; //used for the shotdown request
 
 static void on_watchdog_stop(int sig) {
     (void)sig;
-    g_stop = 1;
+    g_stop = 1; //flag if blackboard and watchdog can not comunicate
 }
 
 
@@ -205,7 +205,7 @@ int main()
     init_game(&gs, &cfg);
 
     //print debug
-    LOGF(LOG_PATH "blackboard.log", "=== BLACKBOARD STARTED ===\n");
+    LOGF(LOG_PATH "blackboard.log", "blackboard awakes\n");
     LOGF(LOG_PATH "blackboard.log", "World: %dx%d | Targets: %d | Obstacles: %d\n", 
         cfg.world_width, cfg.world_height, cfg.num_targets, cfg.num_obstacles);
 
@@ -469,7 +469,7 @@ int main()
             ssize_t ri = read(pipe_input[0], &m, sizeof(m));         
             if (ri != sizeof(m)) continue;  //error of reading
             
-            LOGF(LOG_PATH "blackboard.log", "[DEBUG] input msg: type=%c dx=%d dy=%d\n", m.type, m.dx, m.dy);
+            LOGF(LOG_PATH "blackboard.log", "input msg: type=%c dx=%d dy=%d\n", m.type, m.dx, m.dy);
 
             if (m.type == 'Q') break; //quit
             else if (m.type == 'I') {  //direction: separation in x and y
@@ -491,7 +491,7 @@ int main()
             ssize_t rd= read(pipe_drone[0], &m, sizeof(m));         //timer callout: update the drone dynamics
             if (rd != sizeof(m)) continue;  //error of reading
             
-            LOGF(LOG_PATH "blackboard.log","[DEBUG] drone tick msg: type=%c x=%d y=%d\n", m.type, m.x, m.y);
+            LOGF(LOG_PATH "blackboard.log","drone tick msg: type=%c x=%d y=%d\n", m.type, m.x, m.y);
 
             add_drone_dynamics(&gs); 
         }
@@ -503,7 +503,7 @@ int main()
             if (nr != sizeof(mt)) continue; //error of reading
 
             if (mt.type == 'R') {
-                LOGF(LOG_PATH "blackboard.log","[DEBUG] Target respawn: %d targets relocating\n", mt.num);
+                LOGF(LOG_PATH "blackboard.log","Target respawn: %d targets relocating\n", mt.num);
 
                 int n = mt.num;
                 if (n > gs.num_targets) {
@@ -532,7 +532,7 @@ int main()
             if (no != sizeof(mo)) continue; //error of reading
 
             if (mo.type == 'R') {
-                LOGF(LOG_PATH "blackboard.log","[DEBUG] Obstacle respawn: %d obstacles relocating\n", mo.num);
+                LOGF(LOG_PATH "blackboard.log","Obstacle respawn: %d obstacles relocating\n", mo.num);
                 
                 int n = mo.num;
                 if (n > gs.num_obstacles) {
@@ -585,6 +585,7 @@ int main()
     }
 
     endwin();
+    LOGF(LOG_PATH "blackboard.log", "closing blackboard\n");
 
     //close the heartbeat
     munmap(hb, sizeof(*hb));

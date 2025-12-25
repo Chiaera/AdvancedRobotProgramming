@@ -42,7 +42,7 @@ static void log_open(const char *name) {
 
 #define LOGF(name, ...) do { \
     log_open(name); \
-    fprintf(g_log_file, "[BLACKBOARD] " __VA_ARGS__); \
+    fprintf(g_log_file, "[WATCHDOG DBG] " __VA_ARGS__); \
     fflush(g_log_file); \
 } while(0)
 #else
@@ -111,20 +111,18 @@ int main(int argc, char **argv) {
 
             //to check the time before the last heartbeat
             if (now > last && (now - last) > timeout_ms) {
-                LOGF(LOG_PATH "watchdog.log", "[DEBUG] watchdog msg: TIMEOUT slot=%d pid=%d last=%llums ago\n",
+                LOGF(LOG_PATH "watchdog.log", "watchdog msg: TIMEOUT slot=%d pid=%d last=%llums ago\n",
                     i, (int)p,
                     (unsigned long long)(now - last));
                 goto timeout;
             }
 
-            //DEBUG - print table every second 
-            static uint64_t last_debug_time = 0;
-            if (now - last_debug_time > 1000) {
-                LOGF(LOG_PATH "watchdog.log", "[DEBUG] slot=%d pid=%d alive (last_seen=%llums ago)\n",                
-                    i, (int)p, 
-                    (unsigned long long)(now-last));
-                last_debug_time = now;
-            }
+            //DEBUG - print table    
+            LOGF(LOG_PATH "watchdog.log", "watchdog msg: slot=%d pid=%d last=%llu now=%llu diff=%llu\n",                
+                i, (int)p, 
+                (unsigned long long)last,
+                (unsigned long long)now,
+                (unsigned long long)(now-last));
         }
 
         //used for the 'nanosleep' function
@@ -138,8 +136,8 @@ int main(int argc, char **argv) {
 timeout:
         //cleanup ncurses window (blackboard) before killing the process
         pid_t bb = hb->entries[HB_SLOT_BLACKBOARD].pid;
-        if (bb > 0) {
-            LOGF(LOG_PATH "watchdog.log", "[DEBUG] Sending SIGUSR1 to blackboard (PID %d)\n", (int)bb);
+        if (bb > 0) { //registered processes
+            LOGF(LOG_PATH "watchdog.log", "PID %d sending SIGUSR1 to blackboard\n", (int)bb);
             kill(bb, SIGUSR1);
         }
 
