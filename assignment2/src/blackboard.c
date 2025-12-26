@@ -38,31 +38,9 @@
 #include "map.h"
 #include "world.h"
 #include "drone_physics.h"
+#include "logger.h"
 
 #define LOG_PATH "logs/"
-
-//debug
-#ifdef DEBUG
-static FILE *g_log_file = NULL;
-
-static void log_open(const char *name) {
-    if (!g_log_file) {
-        g_log_file = fopen(name, "a");
-        if (!g_log_file) {
-            perror("fopen log failed");
-            g_log_file = stderr;   // fallback: no NULL
-        }
-    }
-}
-
-#define LOGF(name, ...) do { \
-    log_open(name); \
-    fprintf(g_log_file, "[BLACKBOARD DBG] " __VA_ARGS__); \
-    fflush(g_log_file); \
-} while(0)
-#else
-#define LOGF(name, ...) do {} while(0)
-#endif
 
 
 // --------------------------------------------------------------- STRUCT
@@ -168,6 +146,7 @@ static void on_watchdog_stop(int sig) {
 
 int main()
 {
+    log_message("BLACKBOARD", "Blackboard awakes"); //start log
     shm_unlink(HB_SHM_NAME); // ignore errors before the processes 'wake up'
 
     // ncurses
@@ -200,14 +179,11 @@ int main()
     //parameters
     Config cfg;
     load_config("bin/parameters.config", &cfg);
+    log_message("BLACKBOARD", "Config loaded: %dx%d world, %d obstacles, %d targets",
+                cfg.world_width, cfg.world_height, cfg.num_obstacles, cfg.num_targets);
 
     init_screen(&screen);
     init_game(&gs, &cfg);
-
-    //print debug
-    LOGF(LOG_PATH "blackboard.log", "blackboard awakes\n");
-    LOGF(LOG_PATH "blackboard.log", "World: %dx%d | Targets: %d | Obstacles: %d\n", 
-        cfg.world_width, cfg.world_height, cfg.num_targets, cfg.num_obstacles);
 
     // SHM ----------------------------------------------------------------------------------------------------------------------
     
@@ -365,7 +341,7 @@ int main()
     }
 
     //debug
-    LOGF(LOG_PATH "blackboard.log", "All processes forked successfully\n");
+    log_message("BLACKBOARD", "All processes forked successfully");
 
     //close write 
     close(pipe_input[1]);
@@ -386,7 +362,6 @@ int main()
             gs.obstacles[i].x = msg_obstacles.obstacles[i].x;
             gs.obstacles[i].y = msg_obstacles.obstacles[i].y;
         }
-        LOGF(LOG_PATH "blackboard.log", "Received %d obstacles from process_obstacles\n", gs.num_obstacles);
     } else {
         gs.num_obstacles = 0;
     }
@@ -409,7 +384,6 @@ int main()
             gs.targets[i].x = msg_t.targets[i].x;
             gs.targets[i].y = msg_t.targets[i].y;
         }
-        LOGF(LOG_PATH "blackboard.log", "Received %d targets from process_targets\n", gs.num_targets);
     } else {
         gs.num_targets = 0;
     }
@@ -434,12 +408,10 @@ int main()
     if (pipe_obstacles[0] > maxfd) maxfd = pipe_obstacles[0];  
     maxfd += 1;
 
-    LOGF(LOG_PATH "blackboard.log", "Entering main loop\n");
-
     while (1){
 
         if (g_stop) { // watchdog requested shutdown
-            LOGF(LOG_PATH "blackboard.log", "Watchdog requested shutdown\n");
+            log_message("BLACKBOARD", "Watchdog requested shutdown: send SIGUSR1 to blackboard");            
             break;   
         }
        
@@ -469,10 +441,10 @@ int main()
             ssize_t ri = read(pipe_input[0], &m, sizeof(m));         
             if (ri != sizeof(m)) continue;  //error of reading
             
-            LOGF(LOG_PATH "blackboard.log", "input msg: type=%c dx=%d dy=%d\n", m.type, m.dx, m.dy);
-
-            if (m.type == 'Q') break; //quit
-            else if (m.type == 'I') {  //direction: separation in x and y
+            if (m.type == 'Q') {
+                log_message("BLACKBOARD", "Quit: shutting down");
+                break; //quit
+            } else if (m.type == 'I') {  //direction: separation in x and y
                 int mx = m.dx;
                 int my = m.dy;
                 add_direction(&gs, mx, my); //use to compute the input force in the pshysics process
@@ -491,8 +463,6 @@ int main()
             ssize_t rd= read(pipe_drone[0], &m, sizeof(m));         //timer callout: update the drone dynamics
             if (rd != sizeof(m)) continue;  //error of reading
             
-            LOGF(LOG_PATH "blackboard.log","drone tick msg: type=%c x=%d y=%d\n", m.type, m.x, m.y);
-
             add_drone_dynamics(&gs); 
         }
 
@@ -503,15 +473,14 @@ int main()
             if (nr != sizeof(mt)) continue; //error of reading
 
             if (mt.type == 'R') {
-                LOGF(LOG_PATH "blackboard.log","Target respawn: %d targets relocating\n", mt.num);
-
-                int n = mt.num;
-                if (n > gs.num_targets) {
-                    n = gs.num_targets; // relocation of the remains targets
+                int remains_target = mt.num;
+                if (remains_target > gs.num_targets) {
+                    remains_target = gs.num_targets; // relocation of the remains targets. They should be the same for architecture choices
                 }
-                for (int i = 0; i < n; i++) {
+                for (int i = 0; i < remains_target; i++) {
                     gs.targets[i] = mt.targets[i]; //new vector for the remains targets 
                 }
+                log_message("BLACKBOARD", "Target remaining=%d", remains_target);
                 
                 //check overlap with obstacles
                 for (int i = 0; i < n; i++) {
@@ -531,9 +500,7 @@ int main()
             ssize_t no = read(pipe_obstacles[0], &mo, sizeof(mo)); //timer callout: change obstacles position
             if (no != sizeof(mo)) continue; //error of reading
 
-            if (mo.type == 'R') {
-                LOGF(LOG_PATH "blackboard.log","Obstacle respawn: %d obstacles relocating\n", mo.num);
-                
+            if (mo.type == 'R') {                
                 int n = mo.num;
                 if (n > gs.num_obstacles) {
                     n = gs.num_obstacles; // relocation of the obstacles
@@ -585,12 +552,13 @@ int main()
     }
 
     endwin();
-    LOGF(LOG_PATH "blackboard.log", "closing blackboard\n");
 
     //close the heartbeat
     munmap(hb, sizeof(*hb));
     close(hb_fd);
     shm_unlink(HB_SHM_NAME);
+
+    log_message("BLACKBOARD", "Blackboard shutdown");
 
     return 0;
 }

@@ -20,6 +20,7 @@
 
 #include "map.h"  
 #include "heartbeat.h"
+#include "logger.h"
 
 typedef struct { //for the target message, define the number of targets
     char type;  
@@ -105,6 +106,7 @@ static void relocation_targets(int fd, const Config *cfg, int n_targets, Heartbe
             msgR.targets[i].x = x;
             msgR.targets[i].y = y;
         }
+        log_message("TARGETS", "Targets relocated");
 
         ssize_t Rw = write(fd, &msgR, sizeof(msgR));
         if (Rw != sizeof(msgR)) { //debug
@@ -118,7 +120,8 @@ static void relocation_targets(int fd, const Config *cfg, int n_targets, Heartbe
 
 //----------------------------------------------------------------------------------------------------------MAIN
 int main(int argc, char *argv[]){
-    //for the WATCHDOG 
+    
+    //for the WATCHDOG: 
     if (argc < 4) {
         /*expected args:
             1. write_fd
@@ -132,6 +135,8 @@ int main(int argc, char *argv[]){
     int fd = atoi(argv[1]);
     const char *shm_name = argv[2];
     int slot = atoi(argv[3]);
+    //start log
+    log_message("TARGETS", "Targets process started (PID: %d, slot: %d)", getpid(), slot); 
     //open existing shared memory created by blackboard
     int hb_fd = shm_open(shm_name, O_RDWR, 0666);
     if (hb_fd < 0) { 
@@ -185,9 +190,13 @@ int main(int argc, char *argv[]){
         msg.targets[i].x = target_x;
         msg.targets[i].y = target_y;
     }
+    log_message("TARGETS", "Spawned %d targets initially", msg.num);
 
     write(fd, &msg, sizeof(msg)); //spawn the targets
     relocation_targets(fd, &cfg, msg.num, hb, slot); //after tick - respawn
     close(fd); 
+
+    log_message("TARGETS", "Targets process shutdown");
+
     return 0;
 }

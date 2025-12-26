@@ -27,7 +27,7 @@ WATCHDOG_PROCESS := $(BIN_DIR)/watchdog
 
 # logs
 LOG_DIR := logs
-BLACKBOARD_LOG := $(LOG_DIR)/blackboard.log
+SYSTEM_LOG := $(LOG_DIR)/system.log 
 WATCHDOG_LOG := $(LOG_DIR)/watchdog.log
 
 # src
@@ -43,6 +43,7 @@ WATCHDOG_SRC := $(SRC_DIR)/watchdog.c
 
 
 # default rule
+all: | $(BIN_DIR) $(LOG_DIR)
 all: $(BLACKBOARD) $(INPUT_PROCESS) $(DRONE_PROCESS) $(OBSTACLES_PROCESS) $(TARGET_PROCESS) $(WATCHDOG_PROCESS)
 
 # ensure dirs exists
@@ -72,13 +73,13 @@ $(WATCHDOG_PROCESS): $(WATCHDOG_SRC) | $(BIN_DIR)
 
 # run everything
 run: all | $(LOG_DIR)
-	touch $(BLACKBOARD_LOG) $(WATCHDOG_LOG)
+	touch $(SYSTEM_LOG) $(WATCHDOG_LOG)
 	konsole -e ./build/bin/blackboard &
 
 # open live logs in new terminals
 tail-logs: | $(LOG_DIR)
+	konsole -e bash -lc "tail -f $(SYSTEM_LOG)" &
 	konsole -e bash -lc "tail -f $(WATCHDOG_LOG)" &
-	konsole -e bash -lc "tail -f $(BLACKBOARD_LOG)" &
 
 # kill all processes
 kill:
@@ -87,9 +88,9 @@ kill:
 #clean dirs
 clean:
 	rm -rf $(BUILD_DIR) $(LOG_DIR)
-
-clean_logs:
+clean-logs:
 	rm -rf $(LOG_DIR)
-
+clean-build:
+	rm -rf $(BUILD_DIR)
 
 .PHONY: all clean run kill clean-logs tail-logs

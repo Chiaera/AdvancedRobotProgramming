@@ -93,7 +93,7 @@ void respawn_target(GameState *g, int i) {
 
 //managment the collision between drone and target
 void drone_target_collide(GameState *g){
-    double r_pick = 1.5; //pickup radius (in "cells")
+    double r_pick = 1.2; //pickup radius (in "cells")
     double r2 = r_pick * r_pick;
 
     for (int i = 0; i < g->num_targets; i++) {
@@ -104,11 +104,11 @@ void drone_target_collide(GameState *g){
         if(d2 < r2){ // drone is close enough to "collect" the target
             g->score += 1;
 
-            for (int j = i; j < g->num_targets - 1; j++) { //new indices for the target vector
+            for (int j = i; j < g->num_targets - 1; j++) { //shift: remove the collected target from array
                 g->targets[j] = g->targets[j + 1];
             }
 
-            //new number of targets and indices for the vector
+            //number of targets and indices remains for new the vector targets
             g->num_targets--;
             i--;
         }        

@@ -16,6 +16,7 @@
 
 #include "map.h" 
 #include "heartbeat.h"  
+#include "logger.h"
 
 typedef struct { //for the obstacle message, define the number of obstacles
     char type;  
@@ -100,6 +101,7 @@ static void relocation_obstacles(int fd, const Config *cfg, int n_obstacles, Hea
             msgR.obstacles[i].x = x;
             msgR.obstacles[i].y = y;
         }
+        log_message("OBSTACLES", "Obstacles relocated");
 
         ssize_t Rw = write(fd, &msgR, sizeof(msgR));
         if (Rw != sizeof(msgR)) { //debug
@@ -112,6 +114,7 @@ static void relocation_obstacles(int fd, const Config *cfg, int n_obstacles, Hea
 
 //--------------------------------------------------------------------------------------------------------MAIN
 int main(int argc, char *argv[]){
+
     //for the WATCHDOG 
     if (argc < 4) {
         /*expected args:
@@ -126,6 +129,8 @@ int main(int argc, char *argv[]){
     int fd = atoi(argv[1]);
     const char *shm_name = argv[2];
     int slot = atoi(argv[3]);
+    //satrt log
+    log_message("OBSTACLES", "Obstacles process started (PID: %d, slot: %d)", getpid(), slot);
     //open existing shared memory created by blackboard
     int hb_fd = shm_open(shm_name, O_RDWR, 0666);
     if (hb_fd < 0) { 
@@ -180,9 +185,13 @@ int main(int argc, char *argv[]){
         msg.obstacles[i].x = obstacle_x;
         msg.obstacles[i].y = obstacle_y;
     }
+    log_message("OBSTACLES", "Spawned %d obstacles initially", msg.num);
 
     write(fd, &msg, sizeof(msg));
     relocation_obstacles(fd, &cfg, msg.num, hb, slot); //after tick - respawn
     close(fd);
+
+    log_message("OBSTACLES", "Obstacles process shutdown");
+
     return 0;
 }

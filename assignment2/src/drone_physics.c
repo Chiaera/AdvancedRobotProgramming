@@ -214,7 +214,7 @@ void add_drone_dynamics(GameState *gs){
 
     //add forces to managment the collisions
     Force F_collision = {0,0};
-    double r_collision = 1.8; //used in the proximity of the obstacle
+    double r_collision = 2.0; //used in the proximity of the obstacle
     double r2_collision = r_collision*r_collision;
 
     for (int i = 0; i < gs->num_obstacles; i++) {

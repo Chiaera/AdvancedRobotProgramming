@@ -21,6 +21,7 @@
 
 #include "process_input.h"
 #include "heartbeat.h"
+#include "logger.h"
 
 
 //-----------------------------------------------------------------------STRUCT
@@ -117,6 +118,7 @@ void set_input(int fd, WINDOW* win, HeartbeatTable *hb, int slot){
         }
 
         char key = tolower(ch); //keypress
+        log_message("INPUT", "%c key pressed", key);
         draw_keys(win, key); //draw the table
 
         //keypress selected
@@ -133,6 +135,7 @@ void set_input(int fd, WINDOW* win, HeartbeatTable *hb, int slot){
         
         //message 'quit'
         if(ch == 'q' || ch == 'Q') {
+            log_message("INPUT", "Quit key pressed");
             msgInput quit_msg = {'Q', 0, 0};
             write(fd, &quit_msg, sizeof(quit_msg));
             break; 
@@ -165,6 +168,8 @@ int main(int argc, char *argv[])
     int fd = atoi(argv[1]);
     const char *shm_name = argv[2];
     int slot = atoi(argv[3]);
+
+    log_message("INPUT", "Input process awakes (PID: %d, slot: %d)", getpid(), slot); //sart log
 
     //open existing shared memory created by blackboard
     int hb_fd = shm_open(shm_name, O_RDWR, 0666);
@@ -204,6 +209,7 @@ int main(int argc, char *argv[])
 
     set_input(fd, win_keys, hb, slot); //define the input in the message
 
+    log_message("INPUT", "Input process shutdown");
     endwin();
     munmap(hb, sizeof(*hb));
     close(hb_fd);
