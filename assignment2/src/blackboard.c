@@ -152,58 +152,13 @@ static void on_sighup(int sig) { //to avoid abrupt closure of the blackboard -> 
 
 int main()
 {
+    //log and setup watchdog
     log_message("BLACKBOARD", "Blackboard awakes"); //start log
     unlink("logs/processes.pid"); //addictional control to remove olds pid file
     register_process("BLACKBOARD"); //register blackboard pid in the pid file
     shm_unlink(HB_SHM_NAME); // ignore errors before the processes 'wake up'
 
-    // ncurses
-    Screen screen; //initialize the screen 
-    GameState gs; //initialize the variables of the gamestate struct
-    int old_lines = LINES;
-    int old_cols  = COLS;
-
-    initscr();
-
-    //save handler
-    struct sigaction sa;
-    memset(&sa, 0, sizeof(sa));
-    sa.sa_handler = on_watchdog_stop;
-    sigaction(SIGUSR1, &sa, NULL);
-
-    //handler to SIGHUP (window close)
-    struct sigaction sa_hup;
-    memset(&sa_hup, 0, sizeof(sa_hup));
-    sa_hup.sa_handler = on_sighup;
-    sigaction(SIGHUP, &sa_hup, NULL);
-
-    start_color();
-    //yellow target
-    init_pair(1, COLOR_YELLOW, COLOR_BLACK);
-    //magenta obstacles
-    init_pair(2, COLOR_MAGENTA, COLOR_BLACK);
-    //green drone
-    init_pair(3, COLOR_GREEN, COLOR_BLACK);
-
-    noecho();
-    curs_set(0);
-    srand(time(NULL));
-
-    //parameters
-    Config cfg;
-    load_config("bin/parameters.config", &cfg);
-    log_message("BLACKBOARD", "Config loaded: %dx%d world, %d obstacles, %d targets",
-                cfg.world_width, cfg.world_height, cfg.num_obstacles, cfg.num_targets);
-
-    init_screen(&screen);
-    //create the inspection window
-    WINDOW *info_win = newwin(7, 40, 0, 2);
-    box(info_win, 0, 0);
-    mvwprintw(info_win, 0, 2, "[ Info ]");
-    init_game(&gs, &cfg);
-
     // SHM ----------------------------------------------------------------------------------------------------------------------
-    
     //create shared memory
     int hb_fd = shm_open(HB_SHM_NAME, O_CREAT | O_RDWR, 0666);
     if (hb_fd < 0) { 
@@ -234,12 +189,59 @@ int main()
     }
     log_message("BLACKBOARD", "Heartbeat semaphore initialized");
 
-    //save in the blackboard info in its slot
+    //parameters -------------------------------------------------------------------
+    Config cfg;
+    load_config("bin/parameters.config", &cfg);
+    log_message("BLACKBOARD", "Config loaded: %dx%d world, %d obstacles, %d targets",
+                cfg.world_width, cfg.world_height, cfg.num_obstacles, cfg.num_targets);
+    //ncurses -----------------------------------------------------------------
+    initscr(); //initialize
+    int old_lines = LINES;
+    int old_cols  = COLS;
+
+    start_color();
+    //yellow target
+    init_pair(1, COLOR_YELLOW, COLOR_BLACK);
+    //magenta obstacles
+    init_pair(2, COLOR_MAGENTA, COLOR_BLACK);
+    //green drone
+    init_pair(3, COLOR_GREEN, COLOR_BLACK);
+
+    noecho();
+    curs_set(0);
+    srand(time(NULL));
+
+    //create windows ----------------------------------------------------------------
+    Screen screen; //initialize the screen 
+    init_screen(&screen);
+
+    //create the inspection window
+    WINDOW *info_win = newwin(7, 40, 0, 2);
+    box(info_win, 0, 0);
+    mvwprintw(info_win, 0, 2, "[ Info ]");
+
+    //initialize the variables of the gamestate struct --------------------------------
+    GameState gs; 
+    init_game(&gs, &cfg);
+
+    //save in the blackboard info in its heartbeat slot ---------------------------------
     sem_wait(&hb->mutex); //lock the heartbeat table
     hb->entries[HB_SLOT_BLACKBOARD].pid = getpid();
     hb->entries[HB_SLOT_BLACKBOARD].last_seen_ms = now_ms(); //tells the watchdog it is stil active
     sem_post(&hb->mutex); //unlock the heartbeat table
 
+    //signal handlers ----------------------------------------------------------------
+    //save handler
+    struct sigaction sa;
+    memset(&sa, 0, sizeof(sa));
+    sa.sa_handler = on_watchdog_stop;
+    sigaction(SIGUSR1, &sa, NULL);
+
+    //handler to SIGHUP (window close)
+    struct sigaction sa_hup;
+    memset(&sa_hup, 0, sizeof(sa_hup));
+    sa_hup.sa_handler = on_sighup;
+    sigaction(SIGHUP, &sa_hup, NULL);
 
     // FORK ------------------------------------------------------------------------------------------------------------------------
 

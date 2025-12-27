@@ -16,6 +16,7 @@ endif
 
 LDFLAGS_NCURSES := -lncurses
 LDFLAGS_MATH := -lm
+LDFLAGS_PTHREAD := -lpthread 
 
 #include (bin)
 BLACKBOARD := $(BIN_DIR)/blackboard
@@ -55,27 +56,36 @@ $(LOG_DIR):
 
 #blackboard
 $(BLACKBOARD): $(BLACKBOARD_SRC) | $(BIN_DIR)
-	$(CC) $(CFLAGS) $(BLACKBOARD_SRC) -o $@ $(LDFLAGS_NCURSES) $(LDFLAGS_MATH)
+	$(CC) $(CFLAGS) $(BLACKBOARD_SRC) -o $@ $(LDFLAGS_NCURSES) $(LDFLAGS_MATH) $(LDFLAGS_PTHREAD)
 #input
 $(INPUT_PROCESS): $(INPUT_SRC) | $(BIN_DIR)
-	$(CC) $(CFLAGS) $(INPUT_SRC) -o $@ $(LDFLAGS_NCURSES)
+	$(CC) $(CFLAGS) $(INPUT_SRC) -o $@ $(LDFLAGS_NCURSES) $(LDFLAGS_PTHREAD)
 #drone
 $(DRONE_PROCESS): $(DRONE_SRC) | $(BIN_DIR)
-	$(CC) $(CFLAGS) $(DRONE_SRC) -o $@
+	$(CC) $(CFLAGS) $(DRONE_SRC) -o $@ $(LDFLAGS_PTHREAD)
 #targets
 $(TARGET_PROCESS): $(TARGET_SRC) | $(BIN_DIR)
-	$(CC) $(CFLAGS) $(TARGET_SRC) -o $@
+	$(CC) $(CFLAGS) $(TARGET_SRC) -o $@ $(LDFLAGS_PTHREAD)
 #obstacles
 $(OBSTACLES_PROCESS): $(OBSTACLES_SRC) | $(BIN_DIR)
-	$(CC) $(CFLAGS) $(OBSTACLES_SRC) -o $@
+	$(CC) $(CFLAGS) $(OBSTACLES_SRC) -o $@ $(LDFLAGS_PTHREAD)
 #watchdog
 $(WATCHDOG_PROCESS): $(WATCHDOG_SRC) | $(BIN_DIR)
-	$(CC) $(CFLAGS) $(WATCHDOG_SRC) -o $@
+	$(CC) $(CFLAGS) $(WATCHDOG_SRC) -o $@ $(LDFLAGS_PTHREAD)
 
-#run everything
+#run everything (append to existing logs)
 run: all | $(LOG_DIR)
-	touch $(SYSTEM_LOG) $(WATCHDOG_LOG) $(PROCESS_PID)
 	konsole -e ./build/bin/blackboard &
+
+#run with clean logs
+run-clean: all | $(LOG_DIR)
+	@echo "Cleaning old logs"
+	@rm -f $(SYSTEM_LOG) $(WATCHDOG_LOG) $(PROCESS_PID)
+	@echo "Starting blackboard"
+	konsole -e ./build/bin/blackboard &
+
+#shortcut
+r: run-clean
 
 #open live logs in new terminals
 tail-logs: | $(LOG_DIR)
