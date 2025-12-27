@@ -9,6 +9,11 @@
         1. notifies the blackboard (SIGUSR1) then it call endwin()
         2. kills all processes in the table (SIGKILL)
         3. exits
+        
+    - IF blackboard process terminates (window closed):
+        1. logs the event
+        2. kills all remaining processes
+        3. exits
  */
 
 #define _POSIX_C_SOURCE 200809L
@@ -22,11 +27,12 @@
 #include <sys/stat.h>
 #include <errno.h>
 #include <time.h>
+#include <string.h>
 
 #include "heartbeat.h"
 #include "logger.h"
 
-#define CHECK_INTERVAL_MS 20
+#define CHECK_INTERVAL_MS 10
 
 //macro to print the heartbeat table (debug)
 #define LOG_PATH "logs/"
@@ -63,6 +69,14 @@ static void kill_all(const HeartbeatTable *hb) {
     }
 }
 
+//used for the global SIGHUP
+static volatile sig_atomic_t g_sighup_received = 0;
+
+static void on_sighup(int sig) {
+    (void)sig;
+    g_sighup_received = 1;
+}
+
 
 int main(int argc, char **argv) {
     
@@ -81,7 +95,13 @@ int main(int argc, char **argv) {
 
     log_message("WATCHDOG", "Watchdog awakes (timeout: %llums)", (unsigned long long)timeout_ms);
 
-    // Open existing shared memory created by blackboard
+    //save handler to SIGHUP
+    struct sigaction sa_hup;
+    memset(&sa_hup, 0, sizeof(sa_hup));
+    sa_hup.sa_handler = on_sighup;
+    sigaction(SIGHUP, &sa_hup, NULL);
+
+    //open shared memory created by blackboard
     int hb_fd = shm_open(shm_name, O_RDWR, 0666);
     if (hb_fd < 0) { 
         log_message("WATCHDOG", "ERROR: shared memory open failed");
@@ -96,6 +116,13 @@ int main(int argc, char **argv) {
         return 1; 
     }
     log_message("WATCHDOG", "Heartbeat table mapped successfully");
+
+    //waiting for all process to wake up
+    struct timespec grace_ts;
+    grace_ts.tv_sec = 0;
+    grace_ts.tv_nsec = 200 * 1000 * 1000; // 200 ms
+    nanosleep(&grace_ts, NULL);
+    log_message("WATCHDOG", "All processes should be awake");
 
     //use to pass the correct parameters to the timeout
     int detected_slot = -1; 
@@ -113,24 +140,83 @@ int main(int argc, char **argv) {
             if (do_log) last_log_ms = now;
         #endif
 
+        //check if the processes still exist
+        for (int i = 0; i < HB_SLOTS; i++) {
+            pid_t p = hb->entries[i].pid;
+
+            if (p <= 0) continue; //not registered processes
+
+            //check if the i-th process is still active
+            if (kill(p, 0) == -1 && errno == ESRCH) { //process does not exist 
+                const char *proc_name = "UNKNOWN";
+                if (i == HB_SLOT_BLACKBOARD) proc_name = "BLACKBOARD";
+                else if (i == HB_SLOT_INPUT) proc_name = "INPUT";
+                else if (i == HB_SLOT_DRONE) proc_name = "DRONE";
+                else if (i == HB_SLOT_TARGETS) proc_name = "TARGETS";
+                else if (i == HB_SLOT_OBSTACLES) proc_name = "OBSTACLES";
+
+                log_message("WATCHDOG", "%s process (slot=%d, PID=%d) no longer exists, killing all processes", 
+                            proc_name, i, (int)p);
+                LOGF(LOG_PATH "watchdog.log", "%s PID %d not found (ESRCH), killing all\n", proc_name, (int)p);
+                
+                kill_all(hb);
+                munmap(hb, sizeof(*hb));
+                close(hb_fd);
+                log_message("WATCHDOG", "Watchdog shutdown (reason: process %s terminated)", proc_name);
+                return 3; //exit code (against the '2' of timeout)
+            }
+        }
+
+        //close widow after the SIGHUP is received
+        if (g_sighup_received) {
+            pid_t bb_pid = hb->entries[HB_SLOT_BLACKBOARD].pid; //check if blackboard still active
+            
+            //if SIGHUP follow blackboard kill
+            if (bb_pid > 0 && kill(bb_pid, 0) == -1 && errno == ESRCH) { //SIGHUP follows the blackboard kill
+                log_message("WATCHDOG", "BLACKBOARD process terminated (caused SIGHUP), killing all processes");
+                LOGF(LOG_PATH "watchdog.log", "BLACKBOARD terminated, SIGHUP received as consequence\n");
+            } else { //close the window with 'x'
+                log_message("WATCHDOG", "Received SIGHUP: blackboard window closed, killing all processes");
+                LOGF(LOG_PATH "watchdog.log", "SIGHUP received: window closed\n");
+            }
+            
+            kill_all(hb);
+            munmap(hb, sizeof(*hb));
+            close(hb_fd);
+            log_message("WATCHDOG", "Watchdog shutdown (reason: SIGHUP)");
+            return 3; 
+        }
+
         for (int i = 0; i < HB_SLOTS; i++) { //create the heartbeat table
             pid_t p = hb->entries[i].pid;
             uint64_t last = hb->entries[i].last_seen_ms;
 
             //if the PID is not register continue -> possibility: process not started yet
             if (p <= 0) continue;
-            // process registered but has not heartbeated yet -> wait
+
+            //process registered but has not heartbeated yet -> wait
             if (last == 0) continue;
 
-            //to check the time before the last heartbeat
-            if ((now - last) > timeout_ms) {
+            //no overflow: last>now
+            if (last > now) {
+                LOGF(LOG_PATH "watchdog.log", 
+                     "WARNING: slot=%d has future timestamp (last=%llu > now=%llu), resetting\n",
+                     i, (unsigned long long)last, (unsigned long long)now);
+                hb->entries[i].last_seen_ms = now; // Reset timestamp
+                continue;
+            }
+
+            //check the time before the last heartbeat
+            uint64_t elapsed = now - last;
+            if (elapsed > timeout_ms) {
                 detected_slot = i;
                 detected_pid = p;
+
                 log_message("WATCHDOG", "TIMEOUT: slot=%d pid=%d (last seen %llums ago)",
-                            detected_slot, (int)detected_pid, (unsigned long long)(now - last));
+                            detected_slot, (int)detected_pid, (unsigned long long)elapsed);
                 LOGF(LOG_PATH "watchdog.log", "watchdog msg: TIMEOUT slot=%d pid=%d last=%llums ago\n",
-                    i, (int)p,
-                    (unsigned long long)(now - last)); //to print in the watchdog.log (to learn more about the watchdog activity)
+                    i, (int)p, (unsigned long long)elapsed); //print in the watchdog.log (to learn more about the watchdog activity)
+                
                 goto timeout;
             }
 
@@ -179,7 +265,7 @@ timeout:
         munmap(hb, sizeof(*hb));
         close(hb_fd);
 
-        log_message("WATCHDOG", "Watchdog shutdown");
+        log_message("WATCHDOG", "Watchdog shutdown (reason: timeout)");
 
         return 2;
     }

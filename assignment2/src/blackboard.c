@@ -140,6 +140,11 @@ static void on_watchdog_stop(int sig) {
     g_stop = 1; //flag if blackboard and watchdog can not comunicate
 }
 
+static void on_sighup(int sig) { //to avoid abrupt closure of the blackboard -> watchdog need to track this closure
+    (void)sig;
+    log_message("BLACKBOARD", "window closed: received SIGHUP");
+    g_stop = 1;
+}
 
 
 // ----------------------------------------------------------- MAIN
@@ -163,6 +168,11 @@ int main()
     sa.sa_handler = on_watchdog_stop;
     sigaction(SIGUSR1, &sa, NULL);
 
+    //handler to SIGHUP (window close)
+    struct sigaction sa_hup;
+    memset(&sa_hup, 0, sizeof(sa_hup));
+    sa_hup.sa_handler = on_sighup;
+    sigaction(SIGHUP, &sa_hup, NULL);
 
     start_color();
     //yellow target
@@ -394,6 +404,7 @@ int main()
         for (int j = 0; j < gs.num_obstacles; j++) { //check if an obstacle already exists 
             if (gs.obstacles[j].x == tx && gs.obstacles[j].y == ty) {
                 respawn_target(&gs, i); //find a new coordinates for the i-th target
+                break;
             }
         }
     }
@@ -480,7 +491,7 @@ int main()
                 for (int i = 0; i < remains_target; i++) {
                     gs.targets[i] = mt.targets[i]; //new vector for the remains targets 
                 }
-                log_message("BLACKBOARD", "Target remaining=%d", remains_target);
+                log_message("BLACKBOARD", "Target remaining: %d", remains_target);
                 
                 //check overlap with obstacles
                 for (int i = 0; i < n; i++) {
@@ -534,15 +545,15 @@ int main()
         }
 
         //debug - print the useful values
-        mvprintw(0, 0, "cmd:   fx=%.2f fy=%.2f", gs.fx_cmd, gs.fy_cmd);
+        mvprintw(0, 0, "cmd: fx=%.2f fy=%.2f", gs.fx_cmd, gs.fy_cmd);
         clrtoeol();
-        mvprintw(1, 0, "obst:  fx=%.2f fy=%.2f", gs.fx_obst, gs.fy_obst);
+        mvprintw(1, 0, "obst: fx=%.2f fy=%.2f", gs.fx_obst, gs.fy_obst);
         clrtoeol();
         mvprintw(2, 0, "fence: fx=%.2f fy=%.2f", gs.fx_fence, gs.fy_fence);
         clrtoeol();
-        mvprintw(3, 0, "vel:   vx=%.2f vy=%.2f", gs.drone.vx, gs.drone.vy);
+        mvprintw(3, 0, "vel: vx=%.2f vy=%.2f", gs.drone.vx, gs.drone.vy);
         clrtoeol();
-        mvprintw(4, 0, "pos:   x=%6.2f y=%6.2f", gs.drone.x, gs.drone.y);
+        mvprintw(4, 0, "pos: x=%6.2f y=%6.2f", gs.drone.x, gs.drone.y);
         clrtoeol();
         refresh();
 

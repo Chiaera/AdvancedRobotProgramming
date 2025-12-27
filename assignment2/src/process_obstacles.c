@@ -130,7 +130,7 @@ int main(int argc, char *argv[]){
     const char *shm_name = argv[2];
     int slot = atoi(argv[3]);
     //satrt log
-    log_message("OBSTACLES", "Obstacles process started (PID: %d, slot: %d)", getpid(), slot);
+    log_message("OBSTACLES", "Obstacles process awakes (PID: %d, slot: %d)", getpid(), slot);
     //open existing shared memory created by blackboard
     int hb_fd = shm_open(shm_name, O_RDWR, 0666);
     if (hb_fd < 0) { 
@@ -144,9 +144,9 @@ int main(int argc, char *argv[]){
         close(hb_fd); 
         return 1; 
     }
-    //save PID
+    //save PID and initialize activity
+    //hb->entries[slot].last_seen_ms = now_ms();
     hb->entries[slot].pid = getpid();
-    hb->entries[slot].last_seen_ms = now_ms();
 
 
     //initialize the parameters file 

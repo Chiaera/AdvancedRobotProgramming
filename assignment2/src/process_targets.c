@@ -150,9 +150,9 @@ int main(int argc, char *argv[]){
         close(hb_fd); 
         return 1; 
     }
-    //save PID and update activity
+    //save PID and initialize activity
+    //hb->entries[slot].last_seen_ms = now_ms();
     hb->entries[slot].pid = getpid();
-    hb->entries[slot].last_seen_ms = now_ms();
 
     
     //initialize the parameters file 

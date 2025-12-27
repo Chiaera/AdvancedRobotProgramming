@@ -1,14 +1,14 @@
-# path
+#path
 SRC_DIR := src
 INC_DIR := include
 BUILD_DIR := build
 BIN_DIR := $(BUILD_DIR)/bin
 
-# compiler
+#compiler
 CC := gcc
 CFLAGS := -Wall -Wextra -g -I$(INC_DIR)
 
-# debug (0=no debug, 1=debug)
+#debug (0=no debug, 1=debug)
 DEBUG ?= 0
 ifeq ($(DEBUG),1)
 CFLAGS += -DDEBUG
@@ -17,7 +17,7 @@ endif
 LDFLAGS_NCURSES := -lncurses
 LDFLAGS_MATH := -lm
 
-# include (bin)
+#include (bin)
 BLACKBOARD := $(BIN_DIR)/blackboard
 INPUT_PROCESS := $(BIN_DIR)/process_input
 DRONE_PROCESS := $(BIN_DIR)/process_drone
@@ -25,12 +25,12 @@ OBSTACLES_PROCESS := $(BIN_DIR)/process_obstacles
 TARGET_PROCESS := $(BIN_DIR)/process_targets
 WATCHDOG_PROCESS := $(BIN_DIR)/watchdog
 
-# logs
+#logs
 LOG_DIR := logs
 SYSTEM_LOG := $(LOG_DIR)/system.log 
 WATCHDOG_LOG := $(LOG_DIR)/watchdog.log
 
-# src
+#src
 BLACKBOARD_SRC := $(SRC_DIR)/blackboard.c \
                   $(SRC_DIR)/map.c \
                   $(SRC_DIR)/world.c \
@@ -42,46 +42,46 @@ TARGET_SRC := $(SRC_DIR)/process_targets.c
 WATCHDOG_SRC := $(SRC_DIR)/watchdog.c
 
 
-# default rule
+#default rule
 all: | $(BIN_DIR) $(LOG_DIR)
 all: $(BLACKBOARD) $(INPUT_PROCESS) $(DRONE_PROCESS) $(OBSTACLES_PROCESS) $(TARGET_PROCESS) $(WATCHDOG_PROCESS)
 
-# ensure dirs exists
+#ensure dirs exists
 $(BIN_DIR):
 	mkdir -p $(BIN_DIR)
 $(LOG_DIR):
 	mkdir -p $(LOG_DIR)
 
-# blackboard
+#blackboard
 $(BLACKBOARD): $(BLACKBOARD_SRC) | $(BIN_DIR)
 	$(CC) $(CFLAGS) $(BLACKBOARD_SRC) -o $@ $(LDFLAGS_NCURSES) $(LDFLAGS_MATH)
-# input
+#input
 $(INPUT_PROCESS): $(INPUT_SRC) | $(BIN_DIR)
 	$(CC) $(CFLAGS) $(INPUT_SRC) -o $@ $(LDFLAGS_NCURSES)
-# drone
+#drone
 $(DRONE_PROCESS): $(DRONE_SRC) | $(BIN_DIR)
 	$(CC) $(CFLAGS) $(DRONE_SRC) -o $@
-# targets
+#targets
 $(TARGET_PROCESS): $(TARGET_SRC) | $(BIN_DIR)
 	$(CC) $(CFLAGS) $(TARGET_SRC) -o $@
-# obstacles
+#obstacles
 $(OBSTACLES_PROCESS): $(OBSTACLES_SRC) | $(BIN_DIR)
 	$(CC) $(CFLAGS) $(OBSTACLES_SRC) -o $@
-# watchdog
+#watchdog
 $(WATCHDOG_PROCESS): $(WATCHDOG_SRC) | $(BIN_DIR)
 	$(CC) $(CFLAGS) $(WATCHDOG_SRC) -o $@
 
-# run everything
+#run everything
 run: all | $(LOG_DIR)
 	touch $(SYSTEM_LOG) $(WATCHDOG_LOG)
 	konsole -e ./build/bin/blackboard &
 
-# open live logs in new terminals
+#open live logs in new terminals
 tail-logs: | $(LOG_DIR)
 	konsole -e bash -lc "tail -f $(SYSTEM_LOG)" &
 	konsole -e bash -lc "tail -f $(WATCHDOG_LOG)" &
 
-# kill all processes
+#kill all processes
 kill:
 	-pkill -9 blackboard process_input process_drone process_targets process_obstacles watchdog || true
 

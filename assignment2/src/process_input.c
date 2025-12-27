@@ -186,7 +186,8 @@ int main(int argc, char *argv[])
         return 1; 
     }
 
-    //save PID
+    //declare 'awaken' and save PID 
+    //hb->entries[slot].last_seen_ms = now_ms();
     hb->entries[slot].pid = getpid();
 
 

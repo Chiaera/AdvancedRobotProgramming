@@ -27,6 +27,7 @@ typedef struct  { //define the drone struct, divide the position in direction x 
 //send a tick to update the position 
 void move_drone(int fd, HeartbeatTable *hb, int slot){ 
 
+    //hb->entries[slot].last_seen_ms = now_ms(); //tells to watchdog it is awakes
     hb->entries[slot].pid = getpid(); //save PID (used for the watchdog)
 
     while(1){
@@ -34,6 +35,7 @@ void move_drone(int fd, HeartbeatTable *hb, int slot){
 
         msgDrone msg = {'D', 0, 0};
         write(fd, &msg, sizeof(msg));
+        
         //used for the 'nanosleep' function
         struct timespec ts;
         ts.tv_sec = 0;
