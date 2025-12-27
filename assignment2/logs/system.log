@@ -1,21 +1,16 @@
-2025-12-27 02:01:06 [BLACKBOARD pid=21698]Blackboard awakes
-2025-12-27 02:01:06 [BLACKBOARD pid=21698]Config loaded: 100x30 world, 20 obstacles, 10 targets
-2025-12-27 02:01:06 [TARGETS pid=21706]Targets process awakes (PID: 21706, slot: 3)
-2025-12-27 02:01:06 [TARGETS pid=21706]Spawned 10 targets initially
-2025-12-27 02:01:06 [OBSTACLES pid=21707]Obstacles process awakes (PID: 21707, slot: 4)
-2025-12-27 02:01:06 [OBSTACLES pid=21707]Spawned 20 obstacles initially
-2025-12-27 02:01:06 [DRONE pid=21705]Drone process awakes (PID: 21705, slot: 2)
-2025-12-27 02:01:06 [BLACKBOARD pid=21698]All processes forked successfully
-2025-12-27 02:01:06 [WATCHDOG pid=21710]Watchdog awakes (timeout: 2000ms)
-2025-12-27 02:01:06 [WATCHDOG pid=21710]Heartbeat table mapped successfully
-2025-12-27 02:01:07 [WATCHDOG pid=21710]All processes should be awake
-2025-12-27 02:01:07 [INPUT pid=21724]Input process awakes (PID: 21724, slot: 1)
-2025-12-27 02:01:07 [INPUT pid=21724] key pressed
-2025-12-27 02:01:07 [INPUT pid=21724][ key pressed
-2025-12-27 02:01:07 [INPUT pid=21724]a key pressed
-2025-12-27 02:01:29 [WATCHDOG pid=21710]TIMEOUT: slot=3 pid=21706 (last seen 2001ms ago)
-2025-12-27 02:01:29 [WATCHDOG pid=21710]TIMEOUT detected on slot 3 (PID 21706) sending SIGUSR1 to blackboard
-2025-12-27 02:01:29 [BLACKBOARD pid=21698]Watchdog requested shutdown: send SIGUSR1 to blackboard
-2025-12-27 02:01:29 [BLACKBOARD pid=21698]Blackboard shutdown
-2025-12-27 02:01:29 [WATCHDOG pid=21710]Killing all processes
-2025-12-27 02:01:29 [WATCHDOG pid=21710]Watchdog shutdown (reason: timeout)
+2025-12-27 11:42:22 [BLACKBOARD pid=8647]Blackboard awakes
+2025-12-27 11:42:22 [BLACKBOARD pid=8647]Config loaded: 100x30 world, 20 obstacles, 10 targets
+2025-12-27 11:42:22 [BLACKBOARD pid=8647]All processes forked successfully
+2025-12-27 11:42:22 [DRONE pid=8650]Drone process awakes (PID: 8650, slot: 2)
+2025-12-27 11:42:22 [TARGETS pid=8651]Targets process awakes (PID: 8651, slot: 3)
+2025-12-27 11:42:22 [OBSTACLES pid=8652]Obstacles process awakes (PID: 8652, slot: 4)
+2025-12-27 11:42:22 [WATCHDOG pid=8653]Watchdog awakes (timeout: 2000ms)
+2025-12-27 11:42:22 [TARGETS pid=8651]Spawned 10 targets initially
+2025-12-27 11:42:22 [OBSTACLES pid=8652]Spawned 20 obstacles initially
+2025-12-27 11:42:22 [WATCHDOG pid=8653]Heartbeat table mapped successfully
+2025-12-27 11:42:22 [INPUT pid=8665]Input process awakes (PID: 8665, slot: 1)
+2025-12-27 11:42:22 [WATCHDOG pid=8653]All processes should be awake
+2025-12-27 11:42:31 [WATCHDOG pid=8653]INPUT process (slot=1, PID=8665) no longer exists, killing all processes
+2025-12-27 11:42:31 [BLACKBOARD pid=8647]Watchdog requested shutdown: send SIGUSR1 to blackboard
+2025-12-27 11:42:31 [BLACKBOARD pid=8647]Blackboard shutdown
+2025-12-27 11:42:31 [WATCHDOG pid=8653]Watchdog shutdown (reason: process INPUT terminated)

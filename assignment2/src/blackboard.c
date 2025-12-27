@@ -133,7 +133,8 @@ void apply_new_parameters(GameState *gs, Config *cfg) {
 }
 
 //for the WATCHDOG
-static volatile sig_atomic_t g_stop = 0; //used for the shotdown request
+static volatile sig_atomic_t g_stop = 0; //used for the shutdown request
+static volatile sig_atomic_t g_sighup = 0; //for sighup handler -> clean shutdown
 
 static void on_watchdog_stop(int sig) {
     (void)sig;
@@ -424,6 +425,10 @@ int main()
         if (g_stop) { // watchdog requested shutdown
             log_message("BLACKBOARD", "Watchdog requested shutdown: send SIGUSR1 to blackboard");            
             break;   
+        }
+        if (g_sighup) {
+            log_message("BLACKBOARD", "Terminal closed (SIGHUP), shutting down");
+            break;
         }
        
         hb->entries[HB_SLOT_BLACKBOARD].last_seen_ms = now_ms();  //reflesh the slot (for the wathcdog) every iteration - it is indipendent from pipes

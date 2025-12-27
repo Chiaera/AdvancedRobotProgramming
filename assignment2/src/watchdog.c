@@ -154,10 +154,23 @@ int main(int argc, char **argv) {
                 else if (i == HB_SLOT_DRONE) proc_name = "DRONE";
                 else if (i == HB_SLOT_TARGETS) proc_name = "TARGETS";
                 else if (i == HB_SLOT_OBSTACLES) proc_name = "OBSTACLES";
-
+                
                 log_message("WATCHDOG", "%s process (slot=%d, PID=%d) no longer exists, killing all processes", 
                             proc_name, i, (int)p);
                 LOGF(LOG_PATH "watchdog.log", "%s PID %d not found (ESRCH), killing all\n", proc_name, (int)p);
+                
+                //notify blackboard before killing all
+                pid_t bb = hb->entries[HB_SLOT_BLACKBOARD].pid;
+                if (bb > 0 && i != HB_SLOT_BLACKBOARD) {
+                    LOGF(LOG_PATH "watchdog.log", "Sending SIGUSR1 to blackboard PID %d\n", (int)bb);
+                    kill(bb, SIGUSR1);
+                    
+                    //delay for endwin()
+                    struct timespec ts_edwin;
+                    ts_edwin.tv_sec = 0;
+                    ts_edwin.tv_nsec = 200 * 1000 * 1000; // 200 ms
+                    nanosleep(&ts_edwin, NULL);
+                }
                 
                 kill_all(hb);
                 munmap(hb, sizeof(*hb));
