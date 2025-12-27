@@ -9,6 +9,7 @@
 
 #include "drone_physics.h"   
 #include "map.h" 
+#include "logger.h"
 
 typedef struct{ //for save the values of the forces in the directions x and y
     double fx;
@@ -130,6 +131,8 @@ static Force add_fence_repulsion(GameState *gs){
     double bb = (double)(gs->world_height - 1 - gs->drone.y); //bottom
 
     if (bl < rho) { //near the border left 
+        gs->fence_collision++;
+        log_message("DRONE_PHYSICS", "Drone hit the fence"); //write in the blackboard.log
         double d = bl; 
         if (d < 1e-3) d = 1e-3; //prevent division by zero
         // F_fence = eta * (1/d - 1/rho) * (1/d) * (+1.0)
@@ -137,18 +140,24 @@ static Force add_fence_repulsion(GameState *gs){
         F.fx += F_fence * (+1.0); //to right (+x)
     }
     if (br < rho) {  //near the right border
+        gs->fence_collision++;
+        log_message("DRONE_PHYSICS", "Drone hit the fence"); //write in the blackboard.log
         double d = br;
         if (d < 1e-3) d = 1e-3;
         double F_fence  = eta * (1.0/d - 1.0/rho) * (1.0/(d*d));
         F.fx += F_fence * (-1.0); //to left (-x)
     }
     if (bt < rho) { //near the top border
+        gs->fence_collision++;
+        log_message("DRONE_PHYSICS", "Drone hit the fence"); //write in the blackboard.log
         double d = bt;
         if (d < 1e-3) d = 1e-3;
         double F_fence  = eta * (1.0/d - 1.0/rho) * (1.0/(d*d));
         F.fy += F_fence * (+1.0); //to down (+y)
     }
     if (bb < rho) { //near the bottom border
+        gs->fence_collision++;
+        log_message("DRONE_PHYSICS", "Drone hit the fence"); //write in the blackboard.log
         double d = bb;
         if (d < 1e-3) d = 1e-3;
         double F_fence  = eta * (1.0/d - 1.0/rho) * (1.0/(d*d));
@@ -214,7 +223,7 @@ void add_drone_dynamics(GameState *gs){
 
     //add forces to managment the collisions
     Force F_collision = {0,0};
-    double r_collision = 2.0; //used in the proximity of the obstacle
+    double r_collision = 1.6; //used in the proximity of the obstacle
     double r2_collision = r_collision*r_collision;
 
     for (int i = 0; i < gs->num_obstacles; i++) {
@@ -223,6 +232,9 @@ void add_drone_dynamics(GameState *gs){
         double d2 = dx*dx + dy*dy;
         
         if (d2 < r2_collision) {
+            gs->obstacles_hit++; 
+            log_message("DRONE_PHYSICS", "Drone hit an obstacle"); //write in the blackboard.log
+
             if (d2 < 1e-9) {
                 d2 = 1e-9;
             }

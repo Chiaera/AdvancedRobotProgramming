@@ -197,7 +197,7 @@ int main()
 
     init_screen(&screen);
     //create the inspection window
-    WINDOW *info_win = newwin(10, 40, 0, 2);
+    WINDOW *info_win = newwin(7, 40, 0, 2);
     box(info_win, 0, 0);
     mvwprintw(info_win, 0, 2, "[ Info ]");
     init_game(&gs, &cfg);
@@ -556,6 +556,7 @@ int main()
         }
 
         drone_target_collide(&gs); //manages the collision
+        calculate_final_score(&gs); //update score
 
         render(&screen, &gs);
         
@@ -568,8 +569,7 @@ int main()
         mvwprintw(info_win, 3, 2, "Fence: fx=%.2f fy=%.2f", gs.fx_fence, gs.fy_fence);
         mvwprintw(info_win, 4, 2, "Vel: vx=%.2f vy=%.2f", gs.drone.vx, gs.drone.vy);
         mvwprintw(info_win, 5, 2, "Pos: x=%.2f y=%.2f", gs.drone.x, gs.drone.y);
-        mvwprintw(info_win, 6, 2, "Score: %d", gs.score);
-        mvwprintw(info_win, 7, 2, "Targets: %d/%d", gs.targets_collected, cfg.num_targets);
+        mvwprintw(info_win, 6, 2, "Targets: %d/%d", gs.targets_collected, cfg.num_targets);
         wrefresh(info_win);
     }
 

@@ -16,5 +16,6 @@ void respawn_target(GameState *g, int i);
 void relocation_targets(int fd);
 void relocation_obstacles(int fd);
 void drone_target_collide(GameState *g);
+int calculate_final_score(GameState *g);
 
 #endif

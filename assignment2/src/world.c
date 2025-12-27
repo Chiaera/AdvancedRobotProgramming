@@ -8,6 +8,7 @@
 #include <math.h>  
 
 #include "world.h"
+#include "logger.h"
 
 //spawn the obstacle in a valid position
 void respawn_obstacle(GameState *g, int i) { 
@@ -93,7 +94,7 @@ void respawn_target(GameState *g, int i) {
 
 //managment the collision between drone and target
 void drone_target_collide(GameState *g){
-    double r_pick = 1.2; //pickup radius (in "cells")
+    double r_pick = 1.5; //pickup radius (in "cells")
     double r2 = r_pick * r_pick;
 
     for (int i = 0; i < g->num_targets; i++) {
@@ -103,6 +104,8 @@ void drone_target_collide(GameState *g){
 
         if(d2 < r2){ // drone is close enough to "collect" the target
             g->targets_collected += 1;
+        
+            log_message("DRONE_PHYSICS", "Drone collects a target"); //write in the blackboard.log
 
             for (int j = i; j < g->num_targets - 1; j++) { //shift: remove the collected target from array
                 g->targets[j] = g->targets[j + 1];
@@ -118,15 +121,20 @@ void drone_target_collide(GameState *g){
 
 //compute the total score
 int calculate_final_score(GameState *g) {
-    int score = 0;
-    int target_point = 10;
-    int obstacle_penality = 3;
+    int target_point = 10; 
+    int obstacle_penalty = 3; 
+    int fence_penalty = 1; 
+    int score = 0; 
     
     //colected target
-    score += g->targets_collected * target_point;
+    score += g->targets_collected * target_point; 
     
-    //penality for obstacles collision
-    score -= g->obstacles_hit * obstacle_penality;
-
+    //penality for obstacles and fences collision
+    score -= g->obstacles_hit * obstacle_penalty; 
+    score -= g->fence_collision * fence_penalty; 
+    
     if (score < 0) score = 0; //minimum score is zero
+    
+    g->score = score; //save score
+    return score;
 }
