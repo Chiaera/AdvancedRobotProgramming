@@ -89,7 +89,7 @@ r: run-clean
 
 #open live logs in new terminals
 tail-logs: | $(LOG_DIR)
-	konsole -e bash -lc "tail -f $(SYSTEM_LOG)" &
+	konsole -e bash -lc "less +F $(SYSTEM_LOG)" &
 	konsole -e bash -lc "tail -f $(WATCHDOG_LOG)" &
 	konsole -e bash -lc "watch -n 0.5 cat $(PROCESS_PID)" & 
 

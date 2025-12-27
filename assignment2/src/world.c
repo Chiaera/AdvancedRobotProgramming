@@ -105,7 +105,7 @@ void drone_target_collide(GameState *g){
         if(d2 < r2){ // drone is close enough to "collect" the target
             g->targets_collected += 1;
         
-            log_message("DRONE_PHYSICS", "Drone collects a target"); //write in the blackboard.log
+            log_message("DRONE_PHYSICS", "Drone collects a target"); //write in the system.log
 
             for (int j = i; j < g->num_targets - 1; j++) { //shift: remove the collected target from array
                 g->targets[j] = g->targets[j + 1];

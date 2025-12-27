@@ -132,7 +132,7 @@ static Force add_fence_repulsion(GameState *gs){
 
     if (bl < rho) { //near the border left 
         gs->fence_collision++;
-        log_message("DRONE_PHYSICS", "Drone hit the fence"); //write in the blackboard.log
+        log_message("DRONE_PHYSICS", "Drone hit the fence"); //write in the system.log
         double d = bl; 
         if (d < 1e-3) d = 1e-3; //prevent division by zero
         // F_fence = eta * (1/d - 1/rho) * (1/d) * (+1.0)
@@ -141,7 +141,7 @@ static Force add_fence_repulsion(GameState *gs){
     }
     if (br < rho) {  //near the right border
         gs->fence_collision++;
-        log_message("DRONE_PHYSICS", "Drone hit the fence"); //write in the blackboard.log
+        log_message("DRONE_PHYSICS", "Drone hit the fence"); //write in the system.log
         double d = br;
         if (d < 1e-3) d = 1e-3;
         double F_fence  = eta * (1.0/d - 1.0/rho) * (1.0/(d*d));
@@ -149,7 +149,7 @@ static Force add_fence_repulsion(GameState *gs){
     }
     if (bt < rho) { //near the top border
         gs->fence_collision++;
-        log_message("DRONE_PHYSICS", "Drone hit the fence"); //write in the blackboard.log
+        log_message("DRONE_PHYSICS", "Drone hit the fence"); //write in the system.log
         double d = bt;
         if (d < 1e-3) d = 1e-3;
         double F_fence  = eta * (1.0/d - 1.0/rho) * (1.0/(d*d));
@@ -157,7 +157,7 @@ static Force add_fence_repulsion(GameState *gs){
     }
     if (bb < rho) { //near the bottom border
         gs->fence_collision++;
-        log_message("DRONE_PHYSICS", "Drone hit the fence"); //write in the blackboard.log
+        log_message("DRONE_PHYSICS", "Drone hit the fence"); //write in the system.log
         double d = bb;
         if (d < 1e-3) d = 1e-3;
         double F_fence  = eta * (1.0/d - 1.0/rho) * (1.0/(d*d));
@@ -233,7 +233,7 @@ void add_drone_dynamics(GameState *gs){
         
         if (d2 < r2_collision) {
             gs->obstacles_hit++; 
-            log_message("DRONE_PHYSICS", "Drone hit an obstacle"); //write in the blackboard.log
+            log_message("DRONE_PHYSICS", "Drone hit an obstacle"); //write in the system.log
 
             if (d2 < 1e-9) {
                 d2 = 1e-9;

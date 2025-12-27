@@ -7,7 +7,7 @@
     - management the physics of the world
 
     - utility for the watchdog
-        - create the shared memory for the watchdog (used as a heartbeat table)
+        - create the shared memory for the watchdog (used as a heartbeat table) and the semaphore for its safety
         - initializes the heartbeat table to zero
         - reflesh the slot to segnalize its activity
  */
@@ -152,11 +152,48 @@ static void on_sighup(int sig) { //to avoid abrupt closure of the blackboard -> 
 
 int main()
 {
+    static int bb_log_counter = 0; //to avoid the child log write on the initial log
+
     //log and setup watchdog
-    log_message("BLACKBOARD", "Blackboard awakes"); //start log
+    log_message("BLACKBOARD", "[BOOT] Blackboard awakes", bb_log_counter++); //start log
     unlink("logs/processes.pid"); //addictional control to remove olds pid file
     register_process("BLACKBOARD"); //register blackboard pid in the pid file
-    shm_unlink(HB_SHM_NAME); // ignore errors before the processes 'wake up'
+    //shm_unlink(HB_SHM_NAME); // ignore errors before the processes 'wake up'
+
+    //parameters -------------------------------------------------------------------
+    Config cfg;
+    load_config("bin/parameters.config", &cfg);
+    log_message("BLACKBOARD", "[BOOT] Config loaded: %dx%d world, %d obstacles, %d targets",
+                cfg.world_width, cfg.world_height, cfg.num_obstacles, cfg.num_targets, bb_log_counter++);
+    //ncurses -----------------------------------------------------------------
+    initscr(); //initialize
+    int old_lines = LINES;
+    int old_cols  = COLS;
+
+    start_color();
+    //yellow target
+    init_pair(1, COLOR_YELLOW, COLOR_BLACK);
+    //magenta obstacles
+    init_pair(2, COLOR_MAGENTA, COLOR_BLACK);
+    //green drone
+    init_pair(3, COLOR_GREEN, COLOR_BLACK);
+
+    noecho();
+    curs_set(0);
+    srand(time(NULL));
+
+    //create windows ----------------------------------------------------------------
+    Screen screen; //initialize the screen 
+    init_screen(&screen);
+
+    //create the inspection window
+    WINDOW *info_win = newwin(7, 40, 0, 2);
+    box(info_win, 0, 0);
+    mvwprintw(info_win, 0, 2, "[ Info ]");
+
+    //initialize the variables of the gamestate struct --------------------------------
+    GameState gs; 
+    init_game(&gs, &cfg);
 
     // SHM ----------------------------------------------------------------------------------------------------------------------
     //create shared memory
@@ -187,42 +224,10 @@ int main()
         perror("sem_init");
         exit(1);
     }
-    log_message("BLACKBOARD", "Heartbeat semaphore initialized");
+    log_message("BLACKBOARD", "[BOOT] Heartbeat semaphore initialized", bb_log_counter++);
 
-    //parameters -------------------------------------------------------------------
-    Config cfg;
-    load_config("bin/parameters.config", &cfg);
-    log_message("BLACKBOARD", "Config loaded: %dx%d world, %d obstacles, %d targets",
-                cfg.world_width, cfg.world_height, cfg.num_obstacles, cfg.num_targets);
-    //ncurses -----------------------------------------------------------------
-    initscr(); //initialize
-    int old_lines = LINES;
-    int old_cols  = COLS;
-
-    start_color();
-    //yellow target
-    init_pair(1, COLOR_YELLOW, COLOR_BLACK);
-    //magenta obstacles
-    init_pair(2, COLOR_MAGENTA, COLOR_BLACK);
-    //green drone
-    init_pair(3, COLOR_GREEN, COLOR_BLACK);
-
-    noecho();
-    curs_set(0);
-    srand(time(NULL));
-
-    //create windows ----------------------------------------------------------------
-    Screen screen; //initialize the screen 
-    init_screen(&screen);
-
-    //create the inspection window
-    WINDOW *info_win = newwin(7, 40, 0, 2);
-    box(info_win, 0, 0);
-    mvwprintw(info_win, 0, 2, "[ Info ]");
-
-    //initialize the variables of the gamestate struct --------------------------------
-    GameState gs; 
-    init_game(&gs, &cfg);
+    struct timespec ts = {0, 300 * 1000 * 1000};  //delay for wait the log to write in the system.log (300ms)
+    nanosleep(&ts, NULL);
 
     //save in the blackboard info in its heartbeat slot ---------------------------------
     sem_wait(&hb->mutex); //lock the heartbeat table
@@ -349,7 +354,9 @@ int main()
         exit(EXIT_FAILURE);
     }
 
-    //watchdog
+    //debug
+    log_message("BLACKBOARD", "All processes forked successfully");
+
     pid_t pid_watchdog = fork();
     if (pid_watchdog == 0) {
         char timeout_str[16];
@@ -368,8 +375,6 @@ int main()
         exit(1);
     }
 
-    //debug
-    log_message("BLACKBOARD", "All processes forked successfully");
 
     //close write 
     close(pipe_input[1]);
