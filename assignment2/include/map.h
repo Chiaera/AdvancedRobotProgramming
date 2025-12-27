@@ -90,6 +90,8 @@ typedef struct {
     int obstacles_hit;
     int targets_collected;
     int fence_collision;
+    int was_on_fence;
+    int was_on_obstacles;
 } GameState;
 
 

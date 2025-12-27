@@ -101,6 +101,8 @@ static Force add_obstacles_repulsion(GameState *gs){
 static Force add_fence_repulsion(GameState *gs){
     Force F = {0,0}; //default force
 
+    int contact_now = 0; //used to avoid multiple penality on the same fence collision
+
     //managment the proximity obstacle-fence
     int near_obstacle = 0;
     double min_obst_dist = 1e12;
@@ -131,8 +133,8 @@ static Force add_fence_repulsion(GameState *gs){
     double bb = (double)(gs->world_height - 1 - gs->drone.y); //bottom
 
     if (bl < rho) { //near the border left 
-        gs->fence_collision++;
-        log_message("DRONE_PHYSICS", "Drone hit the fence"); //write in the system.log
+        contact_now = 1;
+
         double d = bl; 
         if (d < 1e-3) d = 1e-3; //prevent division by zero
         // F_fence = eta * (1/d - 1/rho) * (1/d) * (+1.0)
@@ -140,24 +142,24 @@ static Force add_fence_repulsion(GameState *gs){
         F.fx += F_fence * (+1.0); //to right (+x)
     }
     if (br < rho) {  //near the right border
-        gs->fence_collision++;
-        log_message("DRONE_PHYSICS", "Drone hit the fence"); //write in the system.log
+        contact_now = 1;
+
         double d = br;
         if (d < 1e-3) d = 1e-3;
         double F_fence  = eta * (1.0/d - 1.0/rho) * (1.0/(d*d));
         F.fx += F_fence * (-1.0); //to left (-x)
     }
     if (bt < rho) { //near the top border
-        gs->fence_collision++;
-        log_message("DRONE_PHYSICS", "Drone hit the fence"); //write in the system.log
+        contact_now = 1;
+
         double d = bt;
         if (d < 1e-3) d = 1e-3;
         double F_fence  = eta * (1.0/d - 1.0/rho) * (1.0/(d*d));
         F.fy += F_fence * (+1.0); //to down (+y)
     }
     if (bb < rho) { //near the bottom border
-        gs->fence_collision++;
-        log_message("DRONE_PHYSICS", "Drone hit the fence"); //write in the system.log
+        contact_now = 1;
+
         double d = bb;
         if (d < 1e-3) d = 1e-3;
         double F_fence  = eta * (1.0/d - 1.0/rho) * (1.0/(d*d));
@@ -171,6 +173,13 @@ static Force add_fence_repulsion(GameState *gs){
         F.fx *= max_fance / magnitude; //correct fence force along x
         F.fy *= max_fance / magnitude; //correct fence force along y
     }
+
+    //collision penality on the contact event
+    if(contact_now && !gs->was_on_fence) {
+        gs->fence_collision++;
+        log_message("DRONE_PHYSICS", "Drone hit the fence"); //write in the system.log
+    }
+    gs->was_on_fence = contact_now;
 
     //save the forces in the GameState struct
     gs->fx_fence = F.fx;
@@ -226,14 +235,15 @@ void add_drone_dynamics(GameState *gs){
     double r_collision = 1.6; //used in the proximity of the obstacle
     double r2_collision = r_collision*r_collision;
 
+    int contact_obstacle_now = 0; //used to avoid multiple penality on the same obstacle
+
     for (int i = 0; i < gs->num_obstacles; i++) {
         double dx = gs->drone.x - (double)gs->obstacles[i].x;
         double dy = gs->drone.y - (double)gs->obstacles[i].y;
         double d2 = dx*dx + dy*dy;
         
         if (d2 < r2_collision) {
-            gs->obstacles_hit++; 
-            log_message("DRONE_PHYSICS", "Drone hit an obstacle"); //write in the system.log
+            contact_obstacle_now = 1;
 
             if (d2 < 1e-9) {
                 d2 = 1e-9;
@@ -250,6 +260,13 @@ void add_drone_dynamics(GameState *gs){
             F_collision.fy += strength * ny;
         }
     }
+
+    //count event collision
+    if(contact_obstacle_now && !gs->was_on_obstacles){
+        gs->obstacles_hit++; 
+        log_message("DRONE_PHYSICS", "Drone hit an obstacle"); //write in the system.log
+    }
+    gs->was_on_obstacles = contact_obstacle_now;
 
     // F_tot = F_input + F_repulsion + F_fence + F_attraction
     double fx = F_input.fx + F_repulsion.fx + F_fence.fx + F_collision.fx /*+ F_attraction.fx*/; //total force along x

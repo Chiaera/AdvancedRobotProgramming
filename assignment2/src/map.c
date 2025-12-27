@@ -99,6 +99,8 @@ void init_game(GameState *g, Config *cfg){
     g->obstacles_hit = 0;
     g->targets_collected = 0;
     g->fence_collision = 0;
+    g->was_on_fence = 0;
+    g->was_on_obstacles = 0;
 }
 
 // draw the window
