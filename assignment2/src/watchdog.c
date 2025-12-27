@@ -144,7 +144,9 @@ int main(int argc, char **argv) {
 
         //check if the processes still exist
         for (int i = 0; i < HB_SLOTS; i++) {
+            sem_wait(&hb->mutex); //lock the heartbeat table
             pid_t p = hb->entries[i].pid;
+            sem_post(&hb->mutex); //unlock the heartbeat table
 
             if (p <= 0) continue; //not registered processes
 
@@ -203,8 +205,10 @@ int main(int argc, char **argv) {
         }
 
         for (int i = 0; i < HB_SLOTS; i++) { //create the heartbeat table
+            sem_wait(&hb->mutex); //lock the heartbeat table
             pid_t p = hb->entries[i].pid;
             uint64_t last = hb->entries[i].last_seen_ms;
+            sem_post(&hb->mutex); //unlock the heartbeat table
 
             //if the PID is not register continue -> possibility: process not started yet
             if (p <= 0) continue;
@@ -217,7 +221,11 @@ int main(int argc, char **argv) {
                 LOGF(LOG_PATH "watchdog.log", 
                      "WARNING: slot=%d has future timestamp (last=%llu > now=%llu), resetting\n",
                      i, (unsigned long long)last, (unsigned long long)now);
+                
+                sem_wait(&hb->mutex); //lock the heartbeat table
                 hb->entries[i].last_seen_ms = now; // Reset timestamp
+                sem_post(&hb->mutex); //unlock the heartbeat table
+                
                 continue;
             }
 

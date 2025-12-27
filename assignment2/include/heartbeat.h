@@ -13,7 +13,8 @@
 
 #include <stdint.h>     
 #include <sys/types.h>  
-#include <time.h>       
+#include <time.h>     
+#include <semaphore.h>  
 
 // POSIX shared memory name - used by all processes
 #define HB_SHM_NAME "/heartbeat"
@@ -36,6 +37,7 @@ typedef struct {
 
 //heartbeat table stuct - one entry(slot) for each process
 typedef struct {
+  sem_t mutex; //semaphore used to protect the heartbeat table
   HbEntry entries[HB_SLOTS];
 } HeartbeatTable;
 

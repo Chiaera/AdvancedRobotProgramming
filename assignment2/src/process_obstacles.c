@@ -75,7 +75,9 @@ static void relocation_obstacles(int fd, const Config *cfg, int n_obstacles, Hea
     while (1) {
         sleep_with_heartbeat(hb, slot, (uint64_t)cfg->obstacle_reloc); //not used 'usleep' because we want to tells the activity during the sleep status
 
+        sem_wait(&hb->mutex); //lock the heartbeat table
         hb->entries[slot].last_seen_ms = now_ms(); //update the slot to tell it is active
+        sem_post(&hb->mutex); //unlock the heartbeat table
 
         msgObstacles msgR;
         msgR.type = 'R'; //'R' = respawn
@@ -146,9 +148,10 @@ int main(int argc, char *argv[]){
         return 1; 
     }
     //save PID and initialize activity
+    sem_wait(&hb->mutex); //lock the heartbeat table
     //hb->entries[slot].last_seen_ms = now_ms();
     hb->entries[slot].pid = getpid();
-
+    sem_post(&hb->mutex); //unlock the heartbeat table
 
     //initialize the parameters file 
     Config cfg;

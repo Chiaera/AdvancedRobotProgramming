@@ -27,12 +27,17 @@ typedef struct  { //define the drone struct, divide the position in direction x 
 //send a tick to update the position 
 void move_drone(int fd, HeartbeatTable *hb, int slot){ 
 
+    sem_wait(&hb->mutex); //lock the heartbeat table
     //hb->entries[slot].last_seen_ms = now_ms(); //tells to watchdog it is awakes
     hb->entries[slot].pid = getpid(); //save PID (used for the watchdog)
+    sem_post(&hb->mutex); //unlock the heartbeat table
 
     while(1){
+        sem_wait(&hb->mutex); //lock the heartbeat table
         hb->entries[slot].last_seen_ms = now_ms(); //tells to watchdog it is stil active
-
+        sem_post(&hb->mutex); //unlock the heartbeat table
+        
+        //send message to blackboard to update the drone position   
         msgDrone msg = {'D', 0, 0};
         write(fd, &msg, sizeof(msg));
         

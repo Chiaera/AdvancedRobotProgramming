@@ -109,7 +109,9 @@ void set_input(int fd, WINDOW* win, HeartbeatTable *hb, int slot){
     ts.tv_nsec = 20 * 1000 * 1000; // 20 ms
 
     while(1){ 
+        sem_wait(&hb->mutex); //lock the heartbeat table
         hb->entries[slot].last_seen_ms = now_ms();   //tells to watchdog it is active
+        sem_post(&hb->mutex); //unlock the heartbeat table
 
         int ch = getch();
         if (ch == ERR) {        
@@ -188,11 +190,12 @@ int main(int argc, char *argv[])
     }
 
     //declare 'awaken' and save PID 
+    sem_wait(&hb->mutex); //lock the heartbeat table
     //hb->entries[slot].last_seen_ms = now_ms();
     hb->entries[slot].pid = getpid();
+    sem_post(&hb->mutex); //unlock the heartbeat table
 
-
-    //function to the ncurses window
+    //function to initialize the ncurses window
     initscr();
     noecho();
     curs_set(0);

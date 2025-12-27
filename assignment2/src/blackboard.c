@@ -227,9 +227,18 @@ int main()
     //initialize the heartbeat table to zero
     memset(hb, 0, sizeof(*hb));
 
+    //initialize the semaphore
+    if (sem_init(&hb->mutex, 1, 1) == -1) {  //(mutex, shared between processes, initial value)
+        perror("sem_init");
+        exit(1);
+    }
+    log_message("BLACKBOARD", "Heartbeat semaphore initialized");
+
     //save in the blackboard info in its slot
+    sem_wait(&hb->mutex); //lock the heartbeat table
     hb->entries[HB_SLOT_BLACKBOARD].pid = getpid();
     hb->entries[HB_SLOT_BLACKBOARD].last_seen_ms = now_ms(); //tells the watchdog it is stil active
+    sem_post(&hb->mutex); //unlock the heartbeat table
 
 
     // FORK ------------------------------------------------------------------------------------------------------------------------
@@ -436,8 +445,10 @@ int main()
             log_message("BLACKBOARD", "Terminal closed (SIGHUP), shutting down");
             break;
         }
-       
+
+        sem_wait(&hb->mutex); //lock the heartbeat table
         hb->entries[HB_SLOT_BLACKBOARD].last_seen_ms = now_ms();  //reflesh the slot (for the wathcdog) every iteration - it is indipendent from pipes
+        sem_post(&hb->mutex); //unlock the heartbeat table
 
         FD_ZERO(&set);
         FD_SET(pipe_input[0], &set);
@@ -575,7 +586,8 @@ int main()
 
     endwin();
 
-    //close the heartbeat
+    //clanup SHM ----------------------------------------------------------------------------------------------------------------
+    sem_destroy(&hb->mutex); //destroy the semaphore    
     munmap(hb, sizeof(*hb));
     close(hb_fd);
     shm_unlink(HB_SHM_NAME);
