@@ -196,6 +196,10 @@ int main()
                 cfg.world_width, cfg.world_height, cfg.num_obstacles, cfg.num_targets);
 
     init_screen(&screen);
+    //create the inspection window
+    WINDOW *info_win = newwin(10, 40, 0, 2);
+    box(info_win, 0, 0);
+    mvwprintw(info_win, 0, 2, "[ Info ]");
     init_game(&gs, &cfg);
 
     // SHM ----------------------------------------------------------------------------------------------------------------------
@@ -551,22 +555,22 @@ int main()
         refresh_screen(&screen);
         }
 
-        //debug - print the useful values
-        mvprintw(0, 0, "cmd: fx=%.2f fy=%.2f", gs.fx_cmd, gs.fy_cmd);
-        clrtoeol();
-        mvprintw(1, 0, "obst: fx=%.2f fy=%.2f", gs.fx_obst, gs.fy_obst);
-        clrtoeol();
-        mvprintw(2, 0, "fence: fx=%.2f fy=%.2f", gs.fx_fence, gs.fy_fence);
-        clrtoeol();
-        mvprintw(3, 0, "vel: vx=%.2f vy=%.2f", gs.drone.vx, gs.drone.vy);
-        clrtoeol();
-        mvprintw(4, 0, "pos: x=%6.2f y=%6.2f", gs.drone.x, gs.drone.y);
-        clrtoeol();
-        refresh();
-
         drone_target_collide(&gs); //manages the collision
 
         render(&screen, &gs);
+        
+        //debug - print the useful values
+        werase(info_win);
+        box(info_win, 0, 0);
+        mvwprintw(info_win, 0, 2, "[ Info ]");
+        mvwprintw(info_win, 1, 2, "Cmd: fx=%.2f fy=%.2f", gs.fx_cmd, gs.fy_cmd);
+        mvwprintw(info_win, 2, 2, "Obst: fx=%.2f fy=%.2f", gs.fx_obst, gs.fy_obst);
+        mvwprintw(info_win, 3, 2, "Fence: fx=%.2f fy=%.2f", gs.fx_fence, gs.fy_fence);
+        mvwprintw(info_win, 4, 2, "Vel: vx=%.2f vy=%.2f", gs.drone.vx, gs.drone.vy);
+        mvwprintw(info_win, 5, 2, "Pos: x=%.2f y=%.2f", gs.drone.x, gs.drone.y);
+        mvwprintw(info_win, 6, 2, "Score: %d", gs.score);
+        mvwprintw(info_win, 7, 2, "Targets: %d/%d", gs.targets_collected, cfg.num_targets);
+        wrefresh(info_win);
     }
 
     endwin();

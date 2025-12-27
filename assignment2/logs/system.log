@@ -1,0 +1,17 @@
+2025-12-27 19:08:10 [BLACKBOARD pid=24345]Blackboard awakes
+2025-12-27 19:08:10 [BLACKBOARD pid=24345]Config loaded: 100x30 world, 20 obstacles, 10 targets
+2025-12-27 19:08:10 [BLACKBOARD pid=24345]All processes forked successfully
+2025-12-27 19:08:10 [TARGETS pid=24349]Targets process awakes (PID: 24349, slot: 3)
+2025-12-27 19:08:10 [TARGETS pid=24349]Spawned 10 targets initially
+2025-12-27 19:08:10 [WATCHDOG pid=24351]Watchdog awakes (timeout: 2000ms)
+2025-12-27 19:08:10 [WATCHDOG pid=24351]Heartbeat table mapped successfully
+2025-12-27 19:08:10 [DRONE pid=24348]Drone process awakes (PID: 24348, slot: 2)
+2025-12-27 19:08:10 [OBSTACLES pid=24350]Obstacles process awakes (PID: 24350, slot: 4)
+2025-12-27 19:08:10 [OBSTACLES pid=24350]Spawned 20 obstacles initially
+2025-12-27 19:08:10 [INPUT pid=24363]Input process awakes (PID: 24363, slot: 1)
+2025-12-27 19:08:11 [WATCHDOG pid=24351]All processes should be awake
+2025-12-27 19:08:17 [BLACKBOARD pid=24345]window closed: received SIGHUP
+2025-12-27 19:08:17 [BLACKBOARD pid=24345]Watchdog requested shutdown: send SIGUSR1 to blackboard
+2025-12-27 19:08:17 [BLACKBOARD pid=24345]Blackboard shutdown
+2025-12-27 19:08:17 [WATCHDOG pid=24351]Received SIGHUP: blackboard window closed, killing all processes
+2025-12-27 19:08:17 [WATCHDOG pid=24351]Watchdog shutdown (reason: SIGHUP)

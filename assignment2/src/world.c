@@ -102,7 +102,7 @@ void drone_target_collide(GameState *g){
         double d2 = dx*dx + dy*dy;
 
         if(d2 < r2){ // drone is close enough to "collect" the target
-            g->score += 1;
+            g->targets_collected += 1;
 
             for (int j = i; j < g->num_targets - 1; j++) { //shift: remove the collected target from array
                 g->targets[j] = g->targets[j + 1];
@@ -113,4 +113,20 @@ void drone_target_collide(GameState *g){
             i--;
         }        
     }
+}
+
+
+//compute the total score
+int calculate_final_score(GameState *g) {
+    int score = 0;
+    int target_point = 10;
+    int obstacle_penality = 3;
+    
+    //colected target
+    score += g->targets_collected * target_point;
+    
+    //penality for obstacles collision
+    score -= g->obstacles_hit * obstacle_penality;
+
+    if (score < 0) score = 0; //minimum score is zero
 }

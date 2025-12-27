@@ -26,7 +26,7 @@ void destroy_win(WINDOW *local_win){
 
 // initializate the window dimension
 void init_screen(Screen*s){
-    s-> starty = 5;
+    s-> starty = 11;
     s-> startx = 1;
     s-> height = LINES-s -> starty-1;
     s-> width = COLS-2;

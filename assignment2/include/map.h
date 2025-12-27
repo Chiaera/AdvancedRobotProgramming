@@ -86,6 +86,9 @@ typedef struct {
 
     //score
     int score;
+    double total_distance;
+    int obstacles_hit;
+    int targets_collected;
 } GameState;
 
 
