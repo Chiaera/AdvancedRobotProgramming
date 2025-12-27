@@ -120,7 +120,7 @@ int main(int argc, char **argv) {
     //waiting for all process to wake up
     struct timespec grace_ts;
     grace_ts.tv_sec = 0;
-    grace_ts.tv_nsec = 200 * 1000 * 1000; // 200 ms
+    grace_ts.tv_nsec = 300 * 1000 * 1000; // 300 ms
     nanosleep(&grace_ts, NULL);
     log_message("WATCHDOG", "All processes should be awake");
 
@@ -246,8 +246,6 @@ timeout:
         //cleanup ncurses window (blackboard) before killing the process
         pid_t bb = hb->entries[HB_SLOT_BLACKBOARD].pid;
         if (bb > 0) { //registered processes
-            log_message("WATCHDOG", "TIMEOUT detected on slot %d (PID %d) sending SIGUSR1 to blackboard", 
-                detected_slot, (int)detected_pid);
             LOGF(LOG_PATH "watchdog.log", "PID %d sending SIGUSR1 to blackboard\n", (int)bb); //to learn more about the watchdog (check if bb_pid == detected_pid)
             kill(bb, SIGUSR1);
         }
@@ -258,14 +256,13 @@ timeout:
         ts_edwin.tv_nsec = 200 * 1000 * 1000; // 200 ms
         nanosleep(&ts_edwin, NULL);
 
-        //kill all registered processe
-        log_message("WATCHDOG", "Killing all processes");        
+        //kill all registered processe  
         kill_all(hb);
 
         munmap(hb, sizeof(*hb));
         close(hb_fd);
 
-        log_message("WATCHDOG", "Watchdog shutdown (reason: timeout)");
+        log_message("WATCHDOG", "Killes all processes, watchdog shutdown (reason: timeout)");
 
         return 2;
     }

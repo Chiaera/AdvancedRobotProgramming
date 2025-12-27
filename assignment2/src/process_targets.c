@@ -136,7 +136,7 @@ int main(int argc, char *argv[]){
     const char *shm_name = argv[2];
     int slot = atoi(argv[3]);
     //start log
-    log_message("TARGETS", "Targets process started (PID: %d, slot: %d)", getpid(), slot); 
+    log_message("TARGETS", "Targets process awakes (PID: %d, slot: %d)", getpid(), slot); 
     //open existing shared memory created by blackboard
     int hb_fd = shm_open(shm_name, O_RDWR, 0666);
     if (hb_fd < 0) { 
