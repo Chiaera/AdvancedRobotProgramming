@@ -63,6 +63,7 @@ int main(int argc, char *argv[])
     int slot = atoi(argv[3]);
 
     log_message("DRONE", "Drone process awakes (PID: %d, slot: %d)", getpid(), slot); //start log
+    register_process("DRONE"); //register process_drone pid in the pid file
 
     //open existing shared memory created by blackboard
     int hb_fd = shm_open(shm_name, O_RDWR, 0666);

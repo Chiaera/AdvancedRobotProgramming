@@ -131,6 +131,7 @@ int main(int argc, char *argv[]){
     int slot = atoi(argv[3]);
     //satrt log
     log_message("OBSTACLES", "Obstacles process awakes (PID: %d, slot: %d)", getpid(), slot);
+    register_process("OBSTACLES"); //register obstacles process pid in the pid file
     //open existing shared memory created by blackboard
     int hb_fd = shm_open(shm_name, O_RDWR, 0666);
     if (hb_fd < 0) { 

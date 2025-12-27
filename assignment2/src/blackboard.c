@@ -153,6 +153,8 @@ static void on_sighup(int sig) { //to avoid abrupt closure of the blackboard -> 
 int main()
 {
     log_message("BLACKBOARD", "Blackboard awakes"); //start log
+    unlink("logs/processes.pid"); //addictional control to remove olds pid file
+    register_process("BLACKBOARD"); //register blackboard pid in the pid file
     shm_unlink(HB_SHM_NAME); // ignore errors before the processes 'wake up'
 
     // ncurses

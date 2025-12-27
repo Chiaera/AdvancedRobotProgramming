@@ -16,13 +16,16 @@
 #include <sys/stat.h>
 
 #define SYSTEM_LOG_PATH "logs/system.log"
+#define PROCESS_FILE_PATH "logs/processes.pid"
 
+//---------------------------------------------------------------------------------------------------------LOG
 //write the messages with the lock
 static inline void log_message(const char *process_name, const char *format, ...) {
     if (mkdir("logs", 0775) == -1 && errno != EEXIST) { //to be sure the makefile created the correct directory
         perror("Failed to create logs directory");
     }
 
+    //open the log_file
     FILE *log_file = fopen(SYSTEM_LOG_PATH, "a"); 
     if (!log_file) {
         perror("Failed to open system log");
@@ -62,6 +65,36 @@ static inline void log_message(const char *process_name, const char *format, ...
     flock(fileno(log_file), LOCK_UN); //unlock file -> another process can write
 
     fclose(log_file);
+}
+
+//---------------------------------------------------------------------------------------------------------PROCESS FILE
+//save provess in the filePID
+static inline void register_process(const char *process_name) {
+    if (mkdir("logs", 0775) == -1 && errno != EEXIST) { //to be sure the makefile created the correct directory
+        perror("Failed to create logs directory");
+    }
+
+    //open the pid file
+    FILE *pf = fopen(PROCESS_FILE_PATH, "a");
+    if (!pf) {
+        perror("Failed to open process file");
+        return;
+    }
+
+    //exclusive lock -> just one process at a time can write
+    if (flock(fileno(pf), LOCK_EX) == -1) {
+        perror("Failed to lock process file");
+        fclose(pf);
+        return;
+    }
+
+    //message: <process_name> <PID>
+    fprintf(pf, "%s %d\n", process_name, getpid());
+    fflush(pf);
+
+    //unlock
+    flock(fileno(pf), LOCK_UN);
+    fclose(pf);
 }
 
 #endif

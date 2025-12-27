@@ -29,6 +29,7 @@ WATCHDOG_PROCESS := $(BIN_DIR)/watchdog
 LOG_DIR := logs
 SYSTEM_LOG := $(LOG_DIR)/system.log 
 WATCHDOG_LOG := $(LOG_DIR)/watchdog.log
+PROCESS_PID := $(LOG_DIR)/processes.pid 
 
 #src
 BLACKBOARD_SRC := $(SRC_DIR)/blackboard.c \
@@ -73,13 +74,14 @@ $(WATCHDOG_PROCESS): $(WATCHDOG_SRC) | $(BIN_DIR)
 
 #run everything
 run: all | $(LOG_DIR)
-	touch $(SYSTEM_LOG) $(WATCHDOG_LOG)
+	touch $(SYSTEM_LOG) $(WATCHDOG_LOG) $(PROCESS_PID)
 	konsole -e ./build/bin/blackboard &
 
 #open live logs in new terminals
 tail-logs: | $(LOG_DIR)
 	konsole -e bash -lc "tail -f $(SYSTEM_LOG)" &
 	konsole -e bash -lc "tail -f $(WATCHDOG_LOG)" &
+	konsole -e bash -lc "watch -n 0.5 cat $(PROCESS_PID)" & 
 
 #kill all processes
 kill:

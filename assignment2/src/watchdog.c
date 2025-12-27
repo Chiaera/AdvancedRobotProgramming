@@ -95,6 +95,8 @@ int main(int argc, char **argv) {
 
     log_message("WATCHDOG", "Watchdog awakes (timeout: %llums)", (unsigned long long)timeout_ms);
 
+    register_process("WATCHDOG"); //register watchdog pid in the pid file
+
     //save handler to SIGHUP
     struct sigaction sa_hup;
     memset(&sa_hup, 0, sizeof(sa_hup));

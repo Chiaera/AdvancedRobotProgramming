@@ -170,6 +170,7 @@ int main(int argc, char *argv[])
     int slot = atoi(argv[3]);
 
     log_message("INPUT", "Input process awakes (PID: %d, slot: %d)", getpid(), slot); //sart log
+    register_process("INPUT"); //register input process pid in the pid file
 
     //open existing shared memory created by blackboard
     int hb_fd = shm_open(shm_name, O_RDWR, 0666);
