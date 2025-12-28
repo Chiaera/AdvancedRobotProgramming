@@ -6,13 +6,7 @@ BIN_DIR := $(BUILD_DIR)/bin
 
 #compiler
 CC := gcc
-CFLAGS := -Wall -Wextra -g -I$(INC_DIR)
-
-#debug (0=no debug, 1=debug)
-DEBUG ?= 0
-ifeq ($(DEBUG),1)
-CFLAGS += -DDEBUG
-endif
+CFLAGS := -Wall -Wextra -g -I$(INC_DIR) -DDEBUG
 
 LDFLAGS_NCURSES := -lncurses
 LDFLAGS_MATH := -lm
@@ -53,6 +47,7 @@ $(BIN_DIR):
 	mkdir -p $(BIN_DIR)
 $(LOG_DIR):
 	mkdir -p $(LOG_DIR)
+	touch $(SYSTEM_LOG) $(WATCHDOG_LOG)
 
 #blackboard
 $(BLACKBOARD): $(BLACKBOARD_SRC) | $(BIN_DIR)
@@ -89,7 +84,7 @@ r: run-clean
 
 #open live logs in new terminals
 tail-logs: | $(LOG_DIR)
-	konsole -e bash -lc "less +F $(SYSTEM_LOG)" &
+	konsole -e bash -lc "tail -n 20 -f $(SYSTEM_LOG)" &
 	konsole -e bash -lc "tail -f $(WATCHDOG_LOG)" &
 
 #kill all processes
@@ -104,4 +99,4 @@ clean-logs:
 clean-build:
 	rm -rf $(BUILD_DIR)
 
-.PHONY: all clean run kill clean-logs tail-logs
+.PHONY: all clean run kill clean-logs tail-logs run-clean r

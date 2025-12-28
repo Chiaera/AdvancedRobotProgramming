@@ -22,16 +22,13 @@
 #include <string.h>
 #include <ncurses.h>
 #include <errno.h>
-
 #include <math.h>
 #include <time.h>
-
-
 #include <fcntl.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <stdint.h>
-
+#include <sys/wait.h>
 #include <signal.h>
 
 #include "heartbeat.h"
@@ -148,9 +145,24 @@ static void on_sighup(int sig) { //to avoid abrupt closure of the blackboard -> 
 }
 
 
+//helper function
+void print_help() {
+    printf("Drone Simulator\n");
+    printf("Options:\n");
+    printf("  -h, --help        Show this help message\n\n");
+
+    printf("Controls:\n");
+    printf("  w/e/r/s/d/f/x/c/v   Movement keys\n");
+    printf("  d                   Brake\n");
+    printf("  q                   Quit\n\n");
+
+    printf("Signals:\n");
+    printf("  kill -SIGUSR2 <pid>   Reload configuration\n");
+}
+
 // ----------------------------------------------------------- MAIN
 
-int main()
+int main(int argc, char *argv[])
 {
     static int bb_log_counter = 0; //to avoid the child log write on the initial log
 
@@ -165,6 +177,13 @@ int main()
     load_config("bin/parameters.config", &cfg);
     log_message("BLACKBOARD", "[BOOT] Config loaded: %dx%d world, %d obstacles, %d targets",
                 cfg.world_width, cfg.world_height, cfg.num_obstacles, cfg.num_targets, bb_log_counter++);
+    
+    //helper
+    if (argc > 1 && (!strcmp(argv[1], "-h") || !strcmp(argv[1], "--help"))) {
+        print_help();
+        return 0;
+    }
+    
     //ncurses -----------------------------------------------------------------
     initscr(); //initialize
     int old_lines = LINES;
@@ -208,20 +227,20 @@ int main()
     int hb_fd = shm_open(HB_SHM_NAME, O_CREAT | O_RDWR, 0666);
     if (hb_fd < 0) { 
         perror("shm_open"); 
-        exit(1); 
+        goto cleanup;
     }
 
     //resize shm to fit the struct
     if (ftruncate(hb_fd, sizeof(HeartbeatTable)) < 0) {
         perror("ftruncate"); 
-        exit(1); 
+        goto cleanup;
     }
 
     //mapping shm to the memory address
     HeartbeatTable *hb = mmap(NULL, sizeof(HeartbeatTable), PROT_READ | PROT_WRITE, MAP_SHARED, hb_fd, 0);
     if (hb == MAP_FAILED) { 
         perror("mmap"); 
-        exit(1); 
+        goto cleanup;
     }
 
     //initialize the heartbeat table to zero
@@ -230,11 +249,11 @@ int main()
     //initialize the semaphore
     if (sem_init(&hb->mutex, 1, 1) == -1) {  //(mutex, shared between processes, initial value)
         perror("sem_init");
-        exit(1);
+        goto cleanup;
     }
     log_message("BLACKBOARD", "[BOOT] Heartbeat semaphore initialized", bb_log_counter++);
 
-    struct timespec ts = {0, 300 * 1000 * 1000};  //delay for wait the log to write in the system.log (300ms)
+    struct timespec ts = {0, 200 * 1000 * 1000};  //delay for wait the log to write in the system.log (200ms)
     nanosleep(&ts, NULL);
 
     //save in the blackboard info in its heartbeat slot ---------------------------------
@@ -268,11 +287,30 @@ int main()
     pipe(pipe_obstacles);
     pipe(pipe_targets);
 
-    // input
-    pid_t pid_input = fork();
+    //initialize pid (process not alive yet)
+    pid_t pid_input = -1;
+    pid_t pid_drone = -1;
+    pid_t pid_targets = -1;
+    pid_t pid_obstacles = -1;
+    pid_t pid_watchdog = -1;
 
-    if(pid_input == 0){ //child process of the input process
+    //input
+    pid_input = fork();
+    if(pid_input < 0) { // error
+        perror("fork failed for process_input");
+        log_message("BLACKBOARD", "ERROR: fork failed for INPUT");
+        g_stop = 1;
+        exit(1);
+    } else if (pid_input == 0){ //child process of the input process
+        //pipes not used
         close(pipe_input[0]); 
+        close(pipe_drone[0]);
+        close(pipe_drone[1]);
+        close(pipe_targets[0]);
+        close(pipe_targets[1]);
+        close(pipe_obstacles[0]);
+        close(pipe_obstacles[1]);
+
         char fd_str[16];
         snprintf(fd_str, sizeof(fd_str), "%d", pipe_input[1]);
 
@@ -288,15 +326,25 @@ int main()
             (char *)NULL);
         perror("execlp process_input failed");
         exit(1);
-    } else if (pid_input < 0) { // error
-        perror("fork failed for process_input");
-        exit(EXIT_FAILURE);
     }
 
     // drone
-    pid_t pid_drone = fork();
-    if(pid_drone == 0){ //child process of the drone process
+    pid_drone = fork();
+    if(pid_drone < 0){ //error
+        perror("fork failed for process_drone");
+        log_message("BLACKBOARD", "ERROR: fork failed for DRONE");
+        g_stop = 1;
+        exit(1);
+    } else if(pid_drone == 0){ //child process of the drone process
+        //pipes not used
         close(pipe_drone[0]);
+        close(pipe_input[0]);
+        close(pipe_input[1]);
+        close(pipe_targets[0]);
+        close(pipe_targets[1]);
+        close(pipe_obstacles[0]);
+        close(pipe_obstacles[1]);
+
         char fd_str[16];
         snprintf(fd_str, sizeof(fd_str), "%d", pipe_drone[1]);
         
@@ -310,15 +358,25 @@ int main()
             (char *)NULL);
         perror("execlp process_drone failed");
         exit(1);
-    } else if(pid_drone == -1){ //error
-        perror("fork failed for process_drone");
-        exit(EXIT_FAILURE);
-    }
+    } 
 
     // target
-    pid_t pid_targets = fork();
-    if (pid_targets == 0) { //child process of the targets process
-        //close(pipe_targets[0]); - open for tick
+    pid_targets = fork();
+    if(pid_targets < 0){ //error
+        perror("fork failed for process_targets");
+        log_message("BLACKBOARD", "ERROR: fork failed for TARGETS");
+        g_stop = 1;
+        exit(1);
+    } else if (pid_targets == 0) { //child process of the targets process
+        //pipes not used
+        close(pipe_targets[0]); //use only pipe_targets[1] for the tick
+        close(pipe_input[0]);
+        close(pipe_input[1]);
+        close(pipe_drone[0]);
+        close(pipe_drone[1]);
+        close(pipe_obstacles[0]);
+        close(pipe_obstacles[1]);
+
         char fd_str[16];
         snprintf(fd_str, sizeof(fd_str), "%d", pipe_targets[1]);
         
@@ -334,15 +392,24 @@ int main()
 
         perror("execlp process_targets failed");
         exit(1);
-    } else if(pid_targets == -1){ //error
-        perror("fork failed for process_targets");
-        exit(EXIT_FAILURE);
-    }
+    } 
     
     // obstacles
-    pid_t pid_obstacles = fork();
-    if(pid_obstacles == 0){ //child process of the obstacles process
-        //close(pipe_obstacles[0]); - need to be open for the tick
+    pid_obstacles = fork();
+    if(pid_obstacles < 0){ //error
+        perror("fork failed for process_obstacles");
+        log_message("BLACKBOARD", "ERROR: fork failed for OBSTACLES");
+        g_stop = 1;
+        exit(1);
+    } else if(pid_obstacles == 0){ //child process of the obstacles process
+        //pipes not used
+        close(pipe_obstacles[0]); //use only pipe_obstacles[1] for the tick
+        close(pipe_input[0]);
+        close(pipe_input[1]);
+        close(pipe_drone[0]);
+        close(pipe_drone[1]);
+        close(pipe_targets[0]);
+        close(pipe_targets[1]);
         char fd_str[16];
         snprintf(fd_str, sizeof(fd_str), "%d", pipe_obstacles[1]);
         
@@ -357,16 +424,23 @@ int main()
 
         perror("execlp process_obstacles failed");
         exit(1);
-    } else if(pid_obstacles == -1){ //error
-        perror("fork failed for process_obstacles");
-        exit(EXIT_FAILURE);
+    }
+
+    if (g_stop) {
+        log_message("BLACKBOARD", "Fork failed, skipping main loop");
+        goto cleanup;
     }
 
     //debug
     log_message("BLACKBOARD", "All processes forked successfully");
 
-    pid_t pid_watchdog = fork();
-    if (pid_watchdog == 0) {
+    pid_watchdog = fork();
+    if (pid_watchdog < 0) {
+        perror("fork failed for watchdog");
+        log_message("BLACKBOARD", "ERROR: fork failed for WATCHDOG");
+        g_stop = 1;
+        exit(1);
+    } else if (pid_watchdog == 0) {
         char timeout_str[16];
         snprintf(timeout_str, sizeof(timeout_str), "%d", 2000); // 2s timeout
 
@@ -378,9 +452,6 @@ int main()
 
         perror("execlp watchdog failed");
         _exit(1);
-    } else if (pid_watchdog < 0) {
-        perror("fork failed for watchdog");
-        exit(1);
     }
 
 
@@ -600,7 +671,7 @@ int main()
 
         werase(processes_win);
         box(processes_win, 0, 0);
-        mvwprintw(info_win, 0, 2, "[ Processes ]");
+        mvwprintw(processes_win, 0, 2, "[ Processes ]");
         mvwprintw(processes_win, 1, 2, "Input PID: %d", hb->entries[HB_SLOT_INPUT].pid); 
         mvwprintw(processes_win, 2, 2, "Drone PID: %d", hb->entries[HB_SLOT_DRONE].pid); 
         mvwprintw(processes_win, 3, 2, "Targets PID: %d", hb->entries[HB_SLOT_TARGETS].pid); 
@@ -608,7 +679,7 @@ int main()
         wrefresh(processes_win);
 
         werase(collision_win);
-        mvwprintw(info_win, 0, 2, "[ Collisions ]");
+        mvwprintw(collision_win, 0, 2, "[ Collisions ]");
         box(collision_win, 0, 0);
         mvwprintw(collision_win, 1, 2, "Obstacles hit: %d", gs.obstacles_hit_tot); 
         mvwprintw(collision_win, 2, 2, "Fence hit: %d", gs.fence_collision_tot); 
@@ -627,4 +698,95 @@ int main()
     log_message("BLACKBOARD", "Blackboard shutdown");
 
     return 0;
+
+
+//CLEANUP 
+cleanup:
+    log_message("BLACKBOARD", "Entering cleanup phase");
+    
+    endwin();
+    
+    //kills exist processes
+    if (pid_input > 0) {
+        log_message("BLACKBOARD", "Terminating INPUT");
+        kill(pid_input, SIGTERM);
+    }
+    if (pid_drone > 0) {
+        log_message("BLACKBOARD", "Terminating DRONE");
+        kill(pid_drone, SIGTERM);
+    }
+    if (pid_targets > 0) {
+        log_message("BLACKBOARD", "Terminating TARGETS");
+        kill(pid_targets, SIGTERM);
+    }
+    if (pid_obstacles > 0) {
+        log_message("BLACKBOARD", "Terminating OBSTACLES");
+        kill(pid_obstacles, SIGTERM);
+    }
+    if (pid_watchdog > 0) {
+        log_message("BLACKBOARD", "Terminating WATCHDOG");
+        kill(pid_watchdog, SIGTERM);
+    }
+    
+    nanosleep(&ts, NULL); //delay for killing all processes (200ms)
+    
+    //check if processes killes
+    if (pid_input > 0) kill(pid_input, SIGKILL);
+    if (pid_drone > 0) kill(pid_drone, SIGKILL);
+    if (pid_targets > 0) kill(pid_targets, SIGKILL);
+    if (pid_obstacles > 0) kill(pid_obstacles, SIGKILL);
+    if (pid_watchdog > 0) kill(pid_watchdog, SIGKILL);
+    
+    //avoid zombie child
+    int status;
+    if (pid_input > 0) {
+        waitpid(pid_input, &status, WNOHANG);
+        log_message("BLACKBOARD", "INPUT terminated");
+    }
+    if (pid_drone > 0) {
+        waitpid(pid_drone, &status, WNOHANG);
+        log_message("BLACKBOARD", "DRONE terminated");
+    }
+    if (pid_targets > 0) {
+        waitpid(pid_targets, &status, WNOHANG);
+        log_message("BLACKBOARD", "TARGETS terminated");
+    }
+    if (pid_obstacles > 0) {
+        waitpid(pid_obstacles, &status, WNOHANG);
+        log_message("BLACKBOARD", "OBSTACLES terminated");
+    }
+    if (pid_watchdog > 0) {
+        waitpid(pid_watchdog, &status, WNOHANG);
+        log_message("BLACKBOARD", "WATCHDOG terminated");
+    }
+    
+    //close all pipes
+    close(pipe_input[0]);
+    close(pipe_input[1]);
+    close(pipe_drone[0]);
+    close(pipe_drone[1]);
+    close(pipe_targets[0]);
+    close(pipe_targets[1]);
+    close(pipe_obstacles[0]);
+    close(pipe_obstacles[1]);
+    
+    //cleanup shm
+    if (hb != MAP_FAILED && hb != NULL) { //if cleaunp before mmap
+        sem_destroy(&hb->mutex);
+        munmap(hb, sizeof(*hb));
+    }
+    if (hb_fd >= 0) { //if cleaunp before hb
+        close(hb_fd);
+    }
+    shm_unlink(HB_SHM_NAME);
+
+    log_message("BLACKBOARD", "Blackboard shutdown");
+    
+    if (g_stop && pid_input < 0) {
+        log_message("BLACKBOARD", "Shutdown due to fork failure");
+        return EXIT_FAILURE;
+    }
+
+    log_message("BLACKBOARD", "Blackboard terminated normally");
+    return EXIT_SUCCESS;
 }
