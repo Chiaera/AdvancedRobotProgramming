@@ -246,7 +246,7 @@ void add_drone_dynamics(GameState *gs){
         if (d2 < r2_collision) {
             contact_obstacle_now = 1;
 
-            if (d2 < 1e-9) {
+            if (d2 < 1e-9) { //prevent division by zero
                 d2 = 1e-9;
             }
             double d = sqrt(d2);
@@ -278,76 +278,83 @@ void add_drone_dynamics(GameState *gs){
     gs->fx_tot = fx;
     gs->fy_tot = fy;
 
+    //avoid tunneling: sub-step integration
+    int sub_steps = 5;
+    double dt_sub = gs->dt / (double)sub_steps;
 
-    // a = (F - k*v)/M
-    double ax = (fx - gs->k *gs->drone.vx) / gs->mass;
-    double ay = (fy - gs->k * gs->drone.vy) / gs->mass;
+    for(int s=0; s<sub_steps; s++){
+        // a = (F - k*v)/M
+        double ax = (fx - gs->k *gs->drone.vx) / gs->mass;
+        double ay = (fy - gs->k * gs->drone.vy) / gs->mass;
 
-    // v = v_old + a*dt 
-    gs->drone.vx += ax * gs->dt;
-    gs->drone.vy += ay * gs->dt;
+        // v = v_old + a*dt 
+        gs->drone.vx += ax * dt_sub;
+        gs->drone.vy += ay * dt_sub;
 
-    //Check on the max velocity - no tunnelling effect
-    double max_vel = gs->max_force / gs->k; 
-    double current_vel_sq = gs->drone.vx * gs->drone.vx + gs->drone.vy * gs->drone.vy;
-    if (current_vel_sq > max_vel * max_vel) {
-        double current_vel = sqrt(current_vel_sq);
-        gs->drone.vx *= max_vel / current_vel;
-        gs->drone.vy *= max_vel / current_vel;
-    }
-
-    //Euler - save the new position
-    double new_x = gs->drone.x + gs->drone.vx * gs->dt;
-    double new_y = gs->drone.y + gs->drone.vy * gs->dt;
-
-    //threshold for checking the position
-    double r_position = 1.3;  //to correct the position after the integration of the forces
-    double r2 = r_position*r_position;
-
-    for (int i = 0; i < gs->num_obstacles; ++i) {
-        //save the coordinates in for the i-th obstacle
-        double ox = (double)gs->obstacles[i].x;
-        double oy = (double)gs->obstacles[i].y;
-
-        //compute the new distance
-        double dx = new_x - ox;
-        double dy = new_y - oy;
-        double d2 = dx*dx + dy*dy;
-
-        //collision check
-        if (d2 < r2) { 
-            if(d2 < 1e-9){ //prevent division by zero
-                d2 = 1e-9;
-            }
-            double d = sqrt(d2);
-
-            //threshold around the obstacle
-            double scale = r_position / d;
-            new_x = ox + dx * scale;
-            new_y = oy + dy * scale;
+        //Check on the max velocity - no tunnelling effect
+        double max_vel = gs->max_force / gs->k; 
+        double current_vel_sq = gs->drone.vx * gs->drone.vx + gs->drone.vy * gs->drone.vy;
+        if (current_vel_sq > max_vel * max_vel) {
+            double current_vel = sqrt(current_vel_sq);
+            gs->drone.vx *= max_vel / current_vel;
+            gs->drone.vy *= max_vel / current_vel;
         }
-    }
 
+        //Euler - save the new position
+        gs->drone.x += gs->drone.vx * dt_sub;
+        gs->drone.y += gs->drone.vy * dt_sub;
 
-    //border clamp 
-    if (new_x < 0.0) {
-        new_x = 0.0;
-        gs->drone.vx = 0.0;  
-    }
-    if (new_x >= gs->world_width) {
-        new_x = gs->world_width - 0.001; 
-        gs->drone.vx = 0.0;
-    }
-    if (new_y < 0.0) {
-        new_y = 0.0;
-        gs->drone.vy = 0.0;
-    }
-    if (new_y >= gs->world_height) {
-        new_y = gs->world_height - 0.001;
-        gs->drone.vy = 0.0;
-    }
+        //new position after sub-step
+        double new_x = gs->drone.x + gs->drone.vx * dt_sub;
+        double new_y = gs->drone.y + gs->drone.vy * dt_sub;
+
+        //threshold for checking the position
+        double r_position = 1.3;  //to correct the position after the integration of the forces
+        double r2 = r_position*r_position;
+
+        for (int i = 0; i < gs->num_obstacles; ++i) {
+            //save the coordinates in for the i-th obstacle
+            double ox = (double)gs->obstacles[i].x;
+            double oy = (double)gs->obstacles[i].y;
+
+            //compute the new distance
+            double dx = new_x - ox;
+            double dy = new_y - oy;
+            double d2 = dx*dx + dy*dy;
+
+            //collision check
+            if (d2 < r2) { 
+                if(d2 < 1e-9){ //prevent division by zero
+                    d2 = 1e-9;
+                }
+                double d = sqrt(d2);
+                double scale = r_position / d; //threshold around the obstacle
+                new_x = ox + dx * scale;
+                new_y = oy + dy * scale;
+            }
+        }
     
-    //save position
-    gs->drone.x = new_x;
-    gs->drone.y =  new_y;
+        //border clamp 
+        if (new_x < 0.0) {
+            new_x = 0.0;
+            gs->drone.vx = 0.0;  
+        }
+        if (new_x >= gs->world_width) {
+            new_x = gs->world_width - 0.001; 
+            gs->drone.vx = 0.0;
+        }
+        if (new_y < 0.0) {
+            new_y = 0.0;
+            gs->drone.vy = 0.0;
+        }
+        if (new_y >= gs->world_height) {
+            new_y = gs->world_height - 0.001;
+            gs->drone.vy = 0.0;
+        }
+        
+        //save position
+        gs->drone.x = new_x;
+        gs->drone.y =  new_y;
+    }
+
 }
