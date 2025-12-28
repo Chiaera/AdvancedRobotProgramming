@@ -68,6 +68,10 @@ $(OBSTACLES_PROCESS): $(OBSTACLES_SRC) | $(BIN_DIR)
 $(WATCHDOG_PROCESS): $(WATCHDOG_SRC) | $(BIN_DIR)
 	$(CC) $(CFLAGS) $(WATCHDOG_SRC) -o $@ $(LDFLAGS_PTHREAD)
 
+#help function
+help:
+	./build/bin/blackboard --help
+
 #run everything (append to existing logs)
 run: all | $(LOG_DIR)
 	konsole -e ./build/bin/blackboard &

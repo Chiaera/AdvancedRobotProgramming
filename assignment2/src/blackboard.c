@@ -164,6 +164,10 @@ void print_help() {
 
 int main(int argc, char *argv[])
 {
+    if (argc == 1) {
+        printf("--help to see the help commands\n");
+    }
+
     static int bb_log_counter = 0; //to avoid the child log write on the initial log
 
     //log and setup watchdog
@@ -210,13 +214,18 @@ int main(int argc, char *argv[])
     box(info_win, 0, 0);
     mvwprintw(info_win, 0, 2, "[ Info ]");
 
-    WINDOW *processes_win = newwin(7, 40, 0, 45); //processes pid window
+    WINDOW *processes_win = newwin(7, 40, 0, 60); //processes pid window
     box(processes_win, 0, 0);
     mvwprintw(processes_win, 0, 2, "[ Processes ]");
 
-    WINDOW *collision_win = newwin(5, 40, 8, 20); //collision window
+    WINDOW *collision_win = newwin(5, 40, 8, 2); //collision window
     box(collision_win, 0, 0);
     mvwprintw(collision_win, 0, 2, "[ Collisions ]");
+
+    WINDOW *help_win = newwin(5, 40, 8, 60); //help window
+    box(help_win, 0, 0);
+    mvwprintw(help_win, 0, 2, "[ Help  ]");
+
 
     //initialize the variables of the gamestate struct --------------------------------
     GameState gs; 
@@ -679,12 +688,19 @@ int main(int argc, char *argv[])
         wrefresh(processes_win);
 
         werase(collision_win);
-        mvwprintw(collision_win, 0, 2, "[ Collisions ]");
         box(collision_win, 0, 0);
+        mvwprintw(collision_win, 0, 2, "[ Collisions ]");
         mvwprintw(collision_win, 1, 2, "Obstacles hit: %d", gs.obstacles_hit_tot); 
         mvwprintw(collision_win, 2, 2, "Fence hit: %d", gs.fence_collision_tot); 
         mvwprintw(collision_win, 3, 2, "Score: %d", gs.score);
         wrefresh(collision_win);
+
+        werase(help_win);
+        box(help_win, 0, 0);
+        mvwprintw(help_win, 0, 2, "[ Help ]");
+        mvwprintw(help_win, 1,2, "Run 'make help' in the terminal");
+        mvwprintw(help_win, 2,2, "to see all available commands."); 
+        wrefresh(help_win);
     }
 
     endwin();
