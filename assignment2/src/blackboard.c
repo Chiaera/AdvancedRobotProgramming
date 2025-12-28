@@ -187,9 +187,17 @@ int main()
     init_screen(&screen);
 
     //create the inspection window
-    WINDOW *info_win = newwin(7, 40, 0, 2);
+    WINDOW *info_win = newwin(7, 40, 0, 2); //info window
     box(info_win, 0, 0);
     mvwprintw(info_win, 0, 2, "[ Info ]");
+
+    WINDOW *processes_win = newwin(7, 40, 0, 45); //processes pid window
+    box(processes_win, 0, 0);
+    mvwprintw(processes_win, 0, 2, "[ Processes ]");
+
+    WINDOW *collision_win = newwin(5, 40, 8, 20); //collision window
+    box(collision_win, 0, 0);
+    mvwprintw(collision_win, 0, 2, "[ Collisions ]");
 
     //initialize the variables of the gamestate struct --------------------------------
     GameState gs; 
@@ -578,7 +586,7 @@ int main()
 
         render(&screen, &gs);
         
-        //debug - print the useful values
+        //debug - print inspection windows
         werase(info_win);
         box(info_win, 0, 0);
         mvwprintw(info_win, 0, 2, "[ Info ]");
@@ -589,6 +597,23 @@ int main()
         mvwprintw(info_win, 5, 2, "Pos: x=%.2f y=%.2f", gs.drone.x, gs.drone.y);
         mvwprintw(info_win, 6, 2, "Targets: %d/%d", gs.targets_collected, cfg.num_targets);
         wrefresh(info_win);
+
+        werase(processes_win);
+        box(processes_win, 0, 0);
+        mvwprintw(info_win, 0, 2, "[ Processes ]");
+        mvwprintw(processes_win, 1, 2, "Input PID: %d", hb->entries[HB_SLOT_INPUT].pid); 
+        mvwprintw(processes_win, 2, 2, "Drone PID: %d", hb->entries[HB_SLOT_DRONE].pid); 
+        mvwprintw(processes_win, 3, 2, "Targets PID: %d", hb->entries[HB_SLOT_TARGETS].pid); 
+        mvwprintw(processes_win, 4, 2, "Obstacles PID: %d", hb->entries[HB_SLOT_OBSTACLES].pid); 
+        wrefresh(processes_win);
+
+        werase(collision_win);
+        mvwprintw(info_win, 0, 2, "[ Collisions ]");
+        box(collision_win, 0, 0);
+        mvwprintw(collision_win, 1, 2, "Obstacles hit: %d", gs.obstacles_hit_tot); 
+        mvwprintw(collision_win, 2, 2, "Fence hit: %d", gs.fence_collision_tot); 
+        mvwprintw(collision_win, 3, 2, "Score: %d", gs.score);
+        wrefresh(collision_win);
     }
 
     endwin();

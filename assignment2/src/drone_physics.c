@@ -177,6 +177,7 @@ static Force add_fence_repulsion(GameState *gs){
     //collision penality on the contact event
     if(contact_now && !gs->was_on_fence) {
         gs->fence_collision++;
+        gs->fence_collision_tot++;
         log_message("DRONE_PHYSICS", "Drone hit the fence"); //write in the system.log
     }
     gs->was_on_fence = contact_now;
@@ -264,6 +265,7 @@ void add_drone_dynamics(GameState *gs){
     //count event collision
     if(contact_obstacle_now && !gs->was_on_obstacles){
         gs->obstacles_hit++; 
+        gs->obstacles_hit_tot++;
         log_message("DRONE_PHYSICS", "Drone hit an obstacle"); //write in the system.log
     }
     gs->was_on_obstacles = contact_obstacle_now;

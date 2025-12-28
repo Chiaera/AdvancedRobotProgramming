@@ -124,17 +124,26 @@ int calculate_final_score(GameState *g) {
     int target_point = 10; 
     int obstacle_penalty = 3; 
     int fence_penalty = 2; 
-    int score = 0; 
+
+    //actual score as 'base' of the computation
+    int score = g->score; 
     
-    //colected target
+    //add collected target points
     score += g->targets_collected * target_point; 
     
-    //penality for obstacles and fences collision
+    //add penality for obstacles and fences collision
     score -= g->obstacles_hit * obstacle_penalty; 
     score -= g->fence_collision * fence_penalty; 
     
     if (score < 0) score = 0; //minimum score is zero
+
+    //update score
+    g->score = score;
+
+    //rreset counters to avoid multiple count
+    g->targets_collected = 0; 
+    g->obstacles_hit = 0; 
+    g->fence_collision = 0;
     
-    g->score = score; //save score
     return score;
 }

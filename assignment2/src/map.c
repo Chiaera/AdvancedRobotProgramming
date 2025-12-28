@@ -26,7 +26,7 @@ void destroy_win(WINDOW *local_win){
 
 // initializate the window dimension
 void init_screen(Screen*s){
-    s-> starty = 9;
+    s-> starty = 14;
     s-> startx = 1;
     s-> height = LINES-s -> starty-1;
     s-> width = COLS-2;
@@ -101,6 +101,8 @@ void init_game(GameState *g, Config *cfg){
     g->fence_collision = 0;
     g->was_on_fence = 0;
     g->was_on_obstacles = 0;
+    g->obstacles_hit_tot = 0;
+    g->fence_collision_tot = 0;
 }
 
 // draw the window
