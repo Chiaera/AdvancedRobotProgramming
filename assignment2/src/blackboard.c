@@ -160,6 +160,28 @@ void print_help() {
     printf("  kill -SIGUSR2 <pid>   Reload configuration\n");
 }
 
+//used to correctly terminate child processes 
+static void wait_and_log(pid_t pid, const char *name) {
+    int status;
+    waitpid(pid, &status, 0);
+
+    if (WIFEXITED(status)) {
+        log_message("BLACKBOARD", "%s exited with code %d",
+                    name, WEXITSTATUS(status));
+    } else if (WIFSIGNALED(status)) {
+        log_message("BLACKBOARD", "%s killed by signal %d",
+                    name, WTERMSIG(status));
+    }
+}
+
+//used to avoid zombie processes
+static void wait_pid(pid_t pid, const char *name) {
+    int status;
+    waitpid(pid, &status, 0);
+    kill(pid, SIGTERM);
+    log_message("BLACKBOARD", "%s terminated", name);
+}
+
 // ----------------------------------------------------------- MAIN
 
 int main(int argc, char *argv[])
@@ -443,6 +465,7 @@ int main(int argc, char *argv[])
     //debug
     log_message("BLACKBOARD", "All processes forked successfully");
 
+    //watchdog
     pid_watchdog = fork();
     if (pid_watchdog < 0) {
         perror("fork failed for watchdog");
@@ -568,9 +591,16 @@ int main(int argc, char *argv[])
             msgInput m;
             ssize_t ri = read(pipe_input[0], &m, sizeof(m));         
             if (ri != sizeof(m)) continue;  //error of reading
-            
+              
             if (m.type == 'Q') {
                 log_message("BLACKBOARD", "Quit: shutting down");
+                
+                //kills exist processes
+                kill(pid_input, SIGTERM);
+                kill(pid_drone, SIGTERM);
+                kill(pid_targets, SIGTERM);
+                kill(pid_obstacles, SIGTERM);
+                kill(pid_watchdog, SIGTERM);
                 break; //quit
             } else if (m.type == 'I') {  //direction: separation in x and y
                 int mx = m.dx;
@@ -703,6 +733,13 @@ int main(int argc, char *argv[])
         wrefresh(help_win);
     }
 
+    //wait for child processes to terminate
+    wait_and_log(pid_input, "INPUT");
+    wait_and_log(pid_drone, "DRONE");
+    wait_and_log(pid_targets, "TARGETS");
+    wait_and_log(pid_obstacles, "OBSTACLES");
+    wait_and_log(pid_watchdog, "WATCHDOG");
+
     endwin();
 
     //clanup SHM ----------------------------------------------------------------------------------------------------------------
@@ -720,30 +757,6 @@ int main(int argc, char *argv[])
 cleanup:
     log_message("BLACKBOARD", "Entering cleanup phase");
     
-    endwin();
-    
-    //kills exist processes
-    if (pid_input > 0) {
-        log_message("BLACKBOARD", "Terminating INPUT");
-        kill(pid_input, SIGTERM);
-    }
-    if (pid_drone > 0) {
-        log_message("BLACKBOARD", "Terminating DRONE");
-        kill(pid_drone, SIGTERM);
-    }
-    if (pid_targets > 0) {
-        log_message("BLACKBOARD", "Terminating TARGETS");
-        kill(pid_targets, SIGTERM);
-    }
-    if (pid_obstacles > 0) {
-        log_message("BLACKBOARD", "Terminating OBSTACLES");
-        kill(pid_obstacles, SIGTERM);
-    }
-    if (pid_watchdog > 0) {
-        log_message("BLACKBOARD", "Terminating WATCHDOG");
-        kill(pid_watchdog, SIGTERM);
-    }
-    
     nanosleep(&ts, NULL); //delay for killing all processes (200ms)
     
     //check if processes killes
@@ -754,28 +767,12 @@ cleanup:
     if (pid_watchdog > 0) kill(pid_watchdog, SIGKILL);
     
     //avoid zombie child
-    int status;
-    if (pid_input > 0) {
-        waitpid(pid_input, &status, WNOHANG);
-        log_message("BLACKBOARD", "INPUT terminated");
-    }
-    if (pid_drone > 0) {
-        waitpid(pid_drone, &status, WNOHANG);
-        log_message("BLACKBOARD", "DRONE terminated");
-    }
-    if (pid_targets > 0) {
-        waitpid(pid_targets, &status, WNOHANG);
-        log_message("BLACKBOARD", "TARGETS terminated");
-    }
-    if (pid_obstacles > 0) {
-        waitpid(pid_obstacles, &status, WNOHANG);
-        log_message("BLACKBOARD", "OBSTACLES terminated");
-    }
-    if (pid_watchdog > 0) {
-        waitpid(pid_watchdog, &status, WNOHANG);
-        log_message("BLACKBOARD", "WATCHDOG terminated");
-    }
-    
+    wait_pid(pid_input, "INPUT");
+    wait_pid(pid_drone, "DRONE");
+    wait_pid(pid_targets, "TARGETS");
+    wait_pid(pid_obstacles, "OBSTACLES");
+    wait_pid(pid_watchdog, "WATCHDOG");
+
     //close all pipes
     close(pipe_input[0]);
     close(pipe_input[1]);
