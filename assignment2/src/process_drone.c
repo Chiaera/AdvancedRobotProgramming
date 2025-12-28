@@ -39,7 +39,11 @@ void move_drone(int fd, HeartbeatTable *hb, int slot){
         
         //send message to blackboard to update the drone position   
         msgDrone msg = {'D', 0, 0};
-        write(fd, &msg, sizeof(msg));
+        ssize_t written = write(fd, &msg, sizeof(msg));
+        if (written != sizeof(msg)) {
+            perror("write failed");
+            log_message("DRONE", "ERROR: write returned %zd", written);
+        }
         
         //used for the 'nanosleep' function
         struct timespec ts;

@@ -191,7 +191,12 @@ int main(int argc, char *argv[]){
     }
     log_message("OBSTACLES", "Spawned %d obstacles initially", msg.num);
 
-    write(fd, &msg, sizeof(msg));
+    ssize_t written = write(fd, &msg, sizeof(msg));
+    if (written != sizeof(msg)) {
+        perror("write failed");
+        log_message("OBSTACLES", "ERROR: write returned %zd", written);
+    }
+      
     relocation_obstacles(fd, &cfg, msg.num, hb, slot); //after tick - respawn
     close(fd);
 

@@ -196,7 +196,12 @@ int main(int argc, char *argv[]){
     }
     log_message("TARGETS", "Spawned %d targets initially", msg.num);
 
-    write(fd, &msg, sizeof(msg)); //spawn the targets
+    ssize_t written = write(fd, &msg, sizeof(msg)); //spawn the targets
+    if (written != sizeof(msg)) {
+        perror("write failed");
+        log_message("TARGETS", "ERROR: write returned %zd", written);
+    }
+
     relocation_targets(fd, &cfg, msg.num, hb, slot); //after tick - respawn
     close(fd); 
 

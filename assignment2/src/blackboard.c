@@ -323,10 +323,28 @@ int main(int argc, char *argv[])
     int pipe_drone[2];
     int pipe_obstacles[2];
     int pipe_targets[2];
-    pipe(pipe_input);
-    pipe(pipe_drone);
-    pipe(pipe_obstacles);
-    pipe(pipe_targets);
+    
+    //check pipes creation 
+    if (pipe(pipe_input) < 0) {
+        perror("pipe creation failed");
+        log_message("BLACKBOARD", "FATAL: cannot create pipes");
+        exit(EXIT_FAILURE);
+    }
+    if (pipe(pipe_drone) < 0) {
+        perror("pipe creation failed");
+        log_message("BLACKBOARD", "FATAL: cannot create pipes");
+        exit(EXIT_FAILURE);
+    }
+    if (pipe(pipe_obstacles) < 0) {
+        perror("pipe creation failed");
+        log_message("BLACKBOARD", "FATAL: cannot create pipes");
+        exit(EXIT_FAILURE);
+    }
+    if (pipe(pipe_targets) < 0) {
+        perror("pipe creation failed");
+        log_message("BLACKBOARD", "FATAL: cannot create pipes");
+        exit(EXIT_FAILURE);
+    }
 
     //initialize pid (process not alive yet)
     pid_t pid_input = -1;

@@ -139,7 +139,11 @@ void set_input(int fd, WINDOW* win, HeartbeatTable *hb, int slot){
         if(ch == 'q' || ch == 'Q') {
             log_message("INPUT", "Quit key pressed");
             msgInput quit_msg = {'Q', 0, 0};
-            write(fd, &quit_msg, sizeof(quit_msg));
+            ssize_t written = write(fd, &quit_msg, sizeof(quit_msg));
+            if (written != sizeof(quit_msg)) {
+                perror("write failed");
+                log_message("INPUT", "ERROR: write returned %zd", written);
+            }
             break; 
         }
 
@@ -149,7 +153,12 @@ void set_input(int fd, WINDOW* win, HeartbeatTable *hb, int slot){
         write(fd, &msg, sizeof(msg));
         }*/
         
-        write(fd, &msg, sizeof(msg));
+        ssize_t written = write(fd, &msg, sizeof(msg));
+        if (written != sizeof(msg)) {
+            perror("write failed");
+            log_message("INPUT", "ERROR: write returned %zd", written);
+        }
+
         nanosleep(&ts, NULL);
     }
 }
