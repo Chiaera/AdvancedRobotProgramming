@@ -107,7 +107,7 @@ static void load_config(const char *path, Config *cfg) {
             else if (!strcmp(key, "NUM_TARGETS")) cfg->num_targets = atoi(value);
 
             //obstacles
-            else if (!strcmp(key, "NUM_OBSTACLES")) cfg->num_obstacles = atoi(value);y
+            else if (!strcmp(key, "NUM_OBSTACLES")) cfg->num_obstacles = atoi(value);
         }
     }
 
