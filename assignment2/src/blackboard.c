@@ -107,7 +107,7 @@ static void load_config(const char *path, Config *cfg) {
             else if (!strcmp(key, "NUM_TARGETS")) cfg->num_targets = atoi(value);
 
             //obstacles
-            else if (!strcmp(key, "NUM_OBSTACLES")) cfg->num_obstacles = atoi(value);
+            else if (!strcmp(key, "NUM_OBSTACLES")) cfg->num_obstacles = atoi(value);y
         }
     }
 
@@ -177,8 +177,11 @@ static void wait_and_log(pid_t pid, const char *name) {
 //used to avoid zombie processes
 static void wait_pid(pid_t pid, const char *name) {
     int status;
-    waitpid(pid, &status, 0);
-    kill(pid, SIGTERM);
+    if (waitpid(pid, &status, 0) > 0) {
+        if (!WIFEXITED(status)) { //if the process did not terminate correctly
+            kill(pid, SIGKILL);  
+        }
+    }
     log_message("BLACKBOARD", "%s terminated", name);
 }
 
@@ -325,22 +328,22 @@ int main(int argc, char *argv[])
     int pipe_targets[2];
     
     //check pipes creation 
-    if (pipe(pipe_input) < 0) {
+    if (pipe(pipe_input) == -1) {
         perror("pipe creation failed");
         log_message("BLACKBOARD", "FATAL: cannot create pipes");
         exit(EXIT_FAILURE);
     }
-    if (pipe(pipe_drone) < 0) {
+    if (pipe(pipe_drone) == -1) {
         perror("pipe creation failed");
         log_message("BLACKBOARD", "FATAL: cannot create pipes");
         exit(EXIT_FAILURE);
     }
-    if (pipe(pipe_obstacles) < 0) {
+    if (pipe(pipe_obstacles) == -1) {
         perror("pipe creation failed");
         log_message("BLACKBOARD", "FATAL: cannot create pipes");
         exit(EXIT_FAILURE);
     }
-    if (pipe(pipe_targets) < 0) {
+    if (pipe(pipe_targets) == -1) {
         perror("pipe creation failed");
         log_message("BLACKBOARD", "FATAL: cannot create pipes");
         exit(EXIT_FAILURE);
