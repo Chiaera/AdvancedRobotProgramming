@@ -308,6 +308,16 @@ int main(int argc, char *argv[])
 
     // FORK ------------------------------------------------------------------------------------------------------------------------
 
+    //implementedsignal mask to avoid wrong sighup and sigusr1 in child processes
+    sigset_t mask;
+    sigemptyset(&mask);
+    sigaddset(&mask, SIGHUP);
+    sigaddset(&mask, SIGUSR1);
+    if (sigprocmask(SIG_BLOCK, &mask, NULL) == -1) {
+        perror("sigprocmask");
+        exit(1);
+    }
+
     // define the pipes
     int pipe_input[2];
     int pipe_drone[2];
@@ -324,6 +334,8 @@ int main(int argc, char *argv[])
     pid_t pid_targets = -1;
     pid_t pid_obstacles = -1;
     pid_t pid_watchdog = -1;
+
+    sigprocmask(SIG_BLOCK, &mask, NULL); //active mask to avoid wrong signals
 
     //input
     pid_input = fork();
@@ -486,6 +498,7 @@ int main(int argc, char *argv[])
         _exit(1);
     }
 
+    sigprocmask(SIG_UNBLOCK, &mask, NULL); //deactive signalmask 
 
     //close write 
     close(pipe_input[1]);
