@@ -166,7 +166,7 @@ int main(int argc, char **argv) {
                 //notify blackboard before killing all
                 pid_t bb = hb->entries[HB_SLOT_BLACKBOARD].pid;
                 if (bb > 0 && i != HB_SLOT_BLACKBOARD) {
-                    LOGF(LOG_PATH "watchdog.log", "Sending SIGUSR1 to blackboard PID %d\n", (int)bb);
+                    LOGF(LOG_PATH "watchdog.log", "Sending SIGUSR1 to blackboard (PID %d)\n", (int)bb);
                     kill(bb, SIGUSR1);
                     
                     //delay for endwin()
@@ -269,7 +269,7 @@ timeout:
         //cleanup ncurses window (blackboard) before killing the process
         pid_t bb = hb->entries[HB_SLOT_BLACKBOARD].pid;
         if (bb > 0) { //registered processes
-            LOGF(LOG_PATH "watchdog.log", "PID %d sending SIGUSR1 to blackboard\n", (int)bb); //to learn more about the watchdog (check if bb_pid == detected_pid)
+            LOGF(LOG_PATH "watchdog.log", "watchdog sending SIGUSR1 to blackboard (PID %d)\n", (int)bb); //to learn more about the watchdog (check if bb_pid == detected_pid)
             kill(bb, SIGUSR1);
         }
 

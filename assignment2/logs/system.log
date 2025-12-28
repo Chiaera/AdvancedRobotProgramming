@@ -1,0 +1,32 @@
+2025-12-28 22:25:38 [BLACKBOARD pid=12139][BOOT] Blackboard awakes
+2025-12-28 22:25:38 [BLACKBOARD pid=12139][BOOT] Config loaded: 100x30 world, 20 obstacles, 10 targets
+2025-12-28 22:25:38 [BLACKBOARD pid=12139][BOOT] Heartbeat semaphore initialized
+2025-12-28 22:25:39 [BLACKBOARD pid=12139][BOOT] Signal mask active
+2025-12-28 22:25:39 [BLACKBOARD pid=12139]Forked INPUT process with PID=12141
+2025-12-28 22:25:39 [BLACKBOARD pid=12139]Forked DRONE process with PID=12142
+2025-12-28 22:25:39 [BLACKBOARD pid=12139]Forked TARGETS process with PID=12143
+2025-12-28 22:25:39 [BLACKBOARD pid=12139]Forked OBSTACLES process with PID=12144
+2025-12-28 22:25:39 [BLACKBOARD pid=12139]All processes forked successfully
+2025-12-28 22:25:39 [BLACKBOARD pid=12139][BOOT] Signal mask deactive
+2025-12-28 22:25:39 [DRONE pid=12142]Drone process awakes (PID: 12142, slot: 2)
+2025-12-28 22:25:39 [OBSTACLES pid=12144]Obstacles process awakes (PID: 12144, slot: 4)
+2025-12-28 22:25:39 [OBSTACLES pid=12144]Spawned 20 obstacles initially
+2025-12-28 22:25:39 [WATCHDOG pid=12145]Watchdog awakes (timeout: 2000ms)
+2025-12-28 22:25:39 [WATCHDOG pid=12145]Heartbeat table mapped successfully
+2025-12-28 22:25:39 [TARGETS pid=12143]Targets process awakes (PID: 12143, slot: 3)
+2025-12-28 22:25:39 [TARGETS pid=12143]Spawned 10 targets initially
+2025-12-28 22:25:39 [INPUT pid=12157]Input process awakes (PID: 12157, slot: 1)
+2025-12-28 22:25:39 [WATCHDOG pid=12145]All processes should be awake
+2025-12-28 22:26:08 [BLACKBOARD pid=12270][BOOT] Blackboard awakes
+2025-12-28 22:26:08 [BLACKBOARD pid=12270][BOOT] Config loaded: 100x30 world, 20 obstacles, 10 targets
+2025-12-28 22:26:09 [TARGETS pid=12143]Targets relocated
+2025-12-28 22:26:09 [BLACKBOARD pid=12139]Target remaining: 10
+2025-12-28 22:26:09 [OBSTACLES pid=12144]Obstacles relocated
+2025-12-28 22:26:38 [WATCHDOG pid=12145]TIMEOUT: slot=2 pid=12142 (last seen 2001ms ago)
+2025-12-28 22:26:38 [BLACKBOARD pid=12139]Watchdog requested shutdown: send SIGUSR1 to blackboard
+2025-12-28 22:26:38 [BLACKBOARD pid=12139]INPUT killed by signal 15
+2025-12-28 22:26:38 [BLACKBOARD pid=12139]DRONE killed by signal 12
+2025-12-28 22:26:38 [BLACKBOARD pid=12139]TARGETS killed by signal 15
+2025-12-28 22:26:38 [BLACKBOARD pid=12139]OBSTACLES killed by signal 15
+2025-12-28 22:26:38 [BLACKBOARD pid=12139]WATCHDOG killed by signal 15
+2025-12-28 22:26:38 [BLACKBOARD pid=12139]Blackboard shutdown

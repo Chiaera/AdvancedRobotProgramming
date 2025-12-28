@@ -144,6 +144,13 @@ static void on_sighup(int sig) { //to avoid abrupt closure of the blackboard -> 
     g_stop = 1;
 }
 
+static void on_sigint(int sig) { //handler for ctrl+c
+    (void)sig;
+    log_message("BLACKBOARD", "received SIGINT (Ctrl+C), shutting down");
+    g_stop = 1;
+}
+
+
 
 //helper function
 void print_help() {
@@ -185,10 +192,46 @@ static void wait_pid(pid_t pid, const char *name) {
     log_message("BLACKBOARD", "%s terminated", name);
 }
 
+
+//used to print final statistics of END-GAME
+int print_final_win(GameState *gs, pid_t pid_watchdog) {
+    //kills watchtdog
+    if (pid_watchdog > 0) { 
+        kill(pid_watchdog, SIGTERM);
+    }
+
+    //clear the screen
+    clear(); 
+    refresh();
+
+    //open final statistics window
+    WINDOW *final_win = newwin(10, 50, LINES/2 - 5, COLS/2 - 25); 
+    box(final_win, 0, 0);
+
+    wattron(final_win, COLOR_PAIR(4) | A_BOLD);
+    mvwprintw(final_win, 1, 2, "You have collected ALL THE TARGETS!");
+    wattroff(final_win, COLOR_PAIR(4) | A_BOLD);      
+    mvwprintw(final_win, 3, 2, "Final Statistics:");
+    mvwprintw(final_win, 4, 4, "Score: %d", gs->score);
+    mvwprintw(final_win, 5, 4, "Obstacles hit: %d", gs->obstacles_hit_tot);
+    mvwprintw(final_win, 6, 4, "Fence collisions: %d", gs->fence_collision_tot);
+    mvwprintw(final_win, 8, 2, "Press any key to exit");
+    wrefresh(final_win);
+
+    //exit game
+    do {
+    nodelay(stdscr, FALSE);
+    getch(); 
+    } while (0);
+    delwin(final_win);
+
+    return 1; //signal to stop the main loop
+}
+
 // ----------------------------------------------------------- MAIN
 
 int main(int argc, char *argv[])
-{
+{  
     if (argc == 1) {
         printf("--help to see the help commands\n");
     }
@@ -225,6 +268,8 @@ int main(int argc, char *argv[])
     init_pair(2, COLOR_MAGENTA, COLOR_BLACK);
     //green drone
     init_pair(3, COLOR_GREEN, COLOR_BLACK);
+    //cyan color
+    init_pair(4, COLOR_CYAN, COLOR_BLACK); 
 
     noecho();
     curs_set(0);
@@ -235,11 +280,11 @@ int main(int argc, char *argv[])
     init_screen(&screen);
 
     //create the inspection window
-    WINDOW *info_win = newwin(7, 40, 0, 2); //info window
+    WINDOW *info_win = newwin(8, 40, 0, 2); //info window
     box(info_win, 0, 0);
     mvwprintw(info_win, 0, 2, "[ Info ]");
 
-    WINDOW *processes_win = newwin(7, 40, 0, 60); //processes pid window
+    WINDOW *processes_win = newwin(6, 40, 0, 60); //processes pid window
     box(processes_win, 0, 0);
     mvwprintw(processes_win, 0, 2, "[ Processes ]");
 
@@ -297,14 +342,20 @@ int main(int argc, char *argv[])
     sem_post(&hb->mutex); //unlock the heartbeat table
 
     //signal handlers ----------------------------------------------------------------
-    //save handler
-    struct sigaction sa;
+    //handler to sigusr1 (watchdog request to stop)
+    struct sigaction sa; 
     memset(&sa, 0, sizeof(sa));
     sa.sa_handler = on_watchdog_stop;
     sigaction(SIGUSR1, &sa, NULL);
 
+    //handler to sigint (ctrl+c)
+    struct sigaction sa_int; 
+    memset(&sa_int, 0, sizeof(sa_int));
+    sa_int.sa_handler = on_sigint;
+    sigaction(SIGINT, &sa_int, NULL);
+
     //handler to SIGHUP (window close)
-    struct sigaction sa_hup;
+    struct sigaction sa_hup;   //handler to sighup (window close)
     memset(&sa_hup, 0, sizeof(sa_hup));
     sa_hup.sa_handler = on_sighup;
     sigaction(SIGHUP, &sa_hup, NULL);
@@ -316,10 +367,6 @@ int main(int argc, char *argv[])
     sigemptyset(&mask);
     sigaddset(&mask, SIGHUP);
     sigaddset(&mask, SIGUSR1);
-    if (sigprocmask(SIG_BLOCK, &mask, NULL) == -1) {
-        perror("sigprocmask");
-        exit(1);
-    }
 
     // define the pipes
     int pipe_input[2];
@@ -330,22 +377,22 @@ int main(int argc, char *argv[])
     //check pipes creation 
     if (pipe(pipe_input) == -1) {
         perror("pipe creation failed");
-        log_message("BLACKBOARD", "FATAL: cannot create pipes");
+        log_message("BLACKBOARD", "cannot create pipes");
         exit(EXIT_FAILURE);
     }
     if (pipe(pipe_drone) == -1) {
         perror("pipe creation failed");
-        log_message("BLACKBOARD", "FATAL: cannot create pipes");
+        log_message("BLACKBOARD", "cannot create pipes");
         exit(EXIT_FAILURE);
     }
     if (pipe(pipe_obstacles) == -1) {
         perror("pipe creation failed");
-        log_message("BLACKBOARD", "FATAL: cannot create pipes");
+        log_message("BLACKBOARD", "cannot create pipes");
         exit(EXIT_FAILURE);
     }
     if (pipe(pipe_targets) == -1) {
         perror("pipe creation failed");
-        log_message("BLACKBOARD", "FATAL: cannot create pipes");
+        log_message("BLACKBOARD", "cannot create pipes");
         exit(EXIT_FAILURE);
     }
 
@@ -356,7 +403,11 @@ int main(int argc, char *argv[])
     pid_t pid_obstacles = -1;
     pid_t pid_watchdog = -1;
 
-    sigprocmask(SIG_BLOCK, &mask, NULL); //active mask to avoid wrong signals
+    if (sigprocmask(SIG_BLOCK, &mask, NULL) == -1) { //active mask to avoid wrong signals
+        perror("sigprocmask");
+        exit(1);
+    }
+    log_message("BLACKBOARD", "[BOOT] Signal mask active", bb_log_counter++);
 
     //input
     pid_input = fork();
@@ -380,16 +431,12 @@ int main(int argc, char *argv[])
 
         char slot_str[8]; //used for the watchdog processes
         snprintf(slot_str, sizeof(slot_str), "%d", HB_SLOT_INPUT);
-        execlp("konsole",
-            "konsole",
-            "-e",
-            "./build/bin/process_input",
-            fd_str,
-            HB_SHM_NAME,
-            slot_str,
-            (char *)NULL);
+        execlp("konsole", "konsole", "-e", "./build/bin/process_input",
+            fd_str, HB_SHM_NAME, slot_str, (char *)NULL);
         perror("execlp process_input failed");
-        exit(1);
+        _exit(1);
+    } else {
+        log_message("BLACKBOARD", "Forked INPUT process with PID=%d", pid_input);
     }
 
     // drone
@@ -414,15 +461,13 @@ int main(int argc, char *argv[])
         
         char slot_str[8]; //used for the watchdog processes
         snprintf(slot_str, sizeof(slot_str), "%d", HB_SLOT_DRONE);
-        execlp("./build/bin/process_drone",
-            "./build/bin/process_drone",
-            fd_str,
-            HB_SHM_NAME,
-            slot_str,
-            (char *)NULL);
+        execlp("./build/bin/process_drone", "./build/bin/process_drone",
+            fd_str, HB_SHM_NAME, slot_str, (char *)NULL);
         perror("execlp process_drone failed");
-        exit(1);
-    } 
+        _exit(1);
+    } else {
+        log_message("BLACKBOARD", "Forked DRONE process with PID=%d", pid_drone);
+    }
 
     // target
     pid_targets = fork();
@@ -447,16 +492,14 @@ int main(int argc, char *argv[])
         char slot_str[8];
         snprintf(slot_str, sizeof(slot_str), "%d", HB_SLOT_TARGETS);
 
-        execlp("./build/bin/process_targets",
-            "./build/bin/process_targets",
-            fd_str,
-            HB_SHM_NAME,
-            slot_str,
-            (char*)NULL);
+        execlp("./build/bin/process_targets", "./build/bin/process_targets",
+            fd_str, HB_SHM_NAME, slot_str, (char*)NULL);
 
         perror("execlp process_targets failed");
-        exit(1);
-    } 
+        _exit(1);
+    } else {
+        log_message("BLACKBOARD", "Forked TARGETS process with PID=%d", pid_targets);
+    }
     
     // obstacles
     pid_obstacles = fork();
@@ -479,15 +522,13 @@ int main(int argc, char *argv[])
         
         char slot_str[8]; //used for the watchdog processes
         snprintf(slot_str, sizeof(slot_str), "%d", HB_SLOT_OBSTACLES);
-        execlp("./build/bin/process_obstacles",
-            "./build/bin/process_obstacles",
-            fd_str,
-            HB_SHM_NAME,
-            slot_str,
-            (char *)NULL);
+        execlp("./build/bin/process_obstacles", "./build/bin/process_obstacles",
+            fd_str, HB_SHM_NAME, slot_str, (char *)NULL);
 
         perror("execlp process_obstacles failed");
-        exit(1);
+        _exit(1);
+    } else {
+        log_message("BLACKBOARD", "Forked OBSTACLES process with PID=%d", pid_obstacles);
     }
 
     if (g_stop) {
@@ -509,17 +550,15 @@ int main(int argc, char *argv[])
         char timeout_str[16];
         snprintf(timeout_str, sizeof(timeout_str), "%d", 2000); // 2s timeout
 
-        execlp("./build/bin/watchdog",
-            "./build/bin/watchdog",
-            HB_SHM_NAME,
-            timeout_str,
-            (char *)NULL);
+        execlp("./build/bin/watchdog",  "./build/bin/watchdog",
+            HB_SHM_NAME, timeout_str, (char *)NULL);
 
         perror("execlp watchdog failed");
         _exit(1);
     }
 
     sigprocmask(SIG_UNBLOCK, &mask, NULL); //deactive signalmask 
+    log_message("BLACKBOARD", "[BOOT] Signal mask deactive", bb_log_counter++);
 
     //close write 
     close(pipe_input[1]);
@@ -675,7 +714,7 @@ int main(int argc, char *argv[])
                 log_message("BLACKBOARD", "Target remaining: %d", remains_target);
                 
                 //check overlap with obstacles
-                for (int i = 0; i < n; i++) {
+                for (int i = 0; i < remains_target; i++) {
                     for (int j = 0; j < gs.num_obstacles; j++) {
                         if (gs.targets[i].x == gs.obstacles[j].x && gs.targets[i].y == gs.obstacles[j].y) {
                             respawn_target(&gs, i);
@@ -726,7 +765,25 @@ int main(int argc, char *argv[])
         }
 
         drone_target_collide(&gs); //manages the collision
-        calculate_final_score(&gs); //update score
+        calculate_final_score(&gs); //update scoreù
+        
+        //END-GAME
+        if (gs.num_targets == 0) {
+            log_message("BLACKBOARD", "All targets collected");
+
+            //kills exist processes
+            kill(pid_watchdog, SIGTERM); //first kill watchdog to avoid wrong sigusr1
+            kill(pid_input, SIGTERM); 
+            kill(pid_drone, SIGTERM); 
+            kill(pid_targets, SIGTERM); 
+            kill(pid_obstacles, SIGTERM); 
+
+            log_message("BLACKBOARD", "Open the final statistics");
+            g_stop = print_final_win(&gs, pid_watchdog); //call function to print final statistics
+            log_message("BLACKBOARD", "Final statistics, shutting down");
+
+            break; //exit the main loop
+        }
 
         render(&screen, &gs);
         
@@ -739,7 +796,7 @@ int main(int argc, char *argv[])
         mvwprintw(info_win, 3, 2, "Fence: fx=%.2f fy=%.2f", gs.fx_fence, gs.fy_fence);
         mvwprintw(info_win, 4, 2, "Vel: vx=%.2f vy=%.2f", gs.drone.vx, gs.drone.vy);
         mvwprintw(info_win, 5, 2, "Pos: x=%.2f y=%.2f", gs.drone.x, gs.drone.y);
-        mvwprintw(info_win, 6, 2, "Targets: %d/%d", gs.targets_collected, cfg.num_targets);
+        mvwprintw(info_win, 6, 2, "Targets: %d/%d", (cfg.num_targets - gs.num_targets), cfg.num_targets);
         wrefresh(info_win);
 
         werase(processes_win);
@@ -765,6 +822,15 @@ int main(int argc, char *argv[])
         mvwprintw(help_win, 1,2, "Run 'make help' in the terminal");
         mvwprintw(help_win, 2,2, "to see all available commands."); 
         wrefresh(help_win);
+    }
+
+    if (g_stop == 1 || g_sighup){ //normal shutdown
+        //kills exist processes
+        kill(pid_input, SIGTERM);
+        kill(pid_drone, SIGTERM);
+        kill(pid_targets, SIGTERM);
+        kill(pid_obstacles, SIGTERM);
+        kill(pid_watchdog, SIGTERM);
     }
 
     //wait for child processes to terminate

@@ -122,8 +122,8 @@ void drone_target_collide(GameState *g){
 //compute the total score
 int calculate_final_score(GameState *g) {
     int target_point = 10; 
-    int obstacle_penalty = 3; 
-    int fence_penalty = 2; 
+    int obstacle_penalty = 5; 
+    int fence_penalty = 3; 
 
     //actual score as 'base' of the computation
     int score = g->score; 
