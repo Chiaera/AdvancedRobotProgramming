@@ -79,7 +79,7 @@ static Force add_obstacles_repulsion(GameState *gs){
             double Fr_y = F_repulsion*ny; //correct radiant force along y
 
             //tangent component (creates "swirling" effect around obstacles)
-            double tx = -ny; //default swirl to left
+            double tx = -ny; 
             double ty = nx;
             double Ft_mag = beta * fabs(F_repulsion); //magnitude proportional to radial repulsion (perpendicular direction)
             double Ft_x = Ft_mag * tx; //correct tangent force along x
@@ -300,11 +300,7 @@ void add_drone_dynamics(GameState *gs){
             gs->drone.vy *= max_vel / current_vel;
         }
 
-        //Euler - save the new position
-        gs->drone.x += gs->drone.vx * dt_sub;
-        gs->drone.y += gs->drone.vy * dt_sub;
-
-        //new position after sub-step
+        //new position (Euler) after sub-step
         double new_x = gs->drone.x + gs->drone.vx * dt_sub;
         double new_y = gs->drone.y + gs->drone.vy * dt_sub;
 
