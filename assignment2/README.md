@@ -267,3 +267,22 @@ cd ~/AdvancedRobotProgramming/assignment1
 make run-clean #this line is responsable to open the blackboard and input konsole
 make tail-logs #this line is responsable to open the log files
 ```
+
+## Troubleshooting
+### Issue: "konsole: command not found"
+If you don't have konsole installed, use:
+```bash
+make all
+./build/bin/blackboard
+# In another terminal:
+# Input window will open automatically
+```
+
+### Issue: "Cannot open parameters.config"
+Make sure you're running from the assignment2 directory:
+```bash
+pwd  # should end with /assignment2
+```
+
+### Issue: Watchdog kills processes immediately
+Check system clock synchronization if running in a VM.
