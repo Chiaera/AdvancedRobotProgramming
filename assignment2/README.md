@@ -267,7 +267,7 @@ cd ~/AdvancedRobotProgramming/assignment1
 make run-clean #this line is responsable to open the blackboard and input konsole
 make tail-logs #this line is responsable to open the log files
 ```
-
+<br>
 ## Troubleshooting
 ### Issue: "konsole: command not found"
 If you don't have konsole installed, use:
