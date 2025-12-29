@@ -4,7 +4,6 @@ his project implements an **interactive multi‑process drone simulator** based 
 Multiple autonomous processes communicate asynchronously with a central server using Unix pipes, while a watchdog monitors the system through shared memory and semaphores. 
 
 ---
-
 ## System Architecture
 
 ![Architecture](img/architecture.png)
@@ -22,47 +21,80 @@ The system implements **6 active processes**, coordinated through a central serv
 | 5 | **Obstacles Generator** | Generates random obstacle positions | `pipe_obstacles` |
 | 6 | **Watchdog** | System monitor | Shared memory + signals |
 
-#### 1. Blackboard server
-The Blackboard is the global server, it runs a continuous loop driven by:
-  - `read()` the parameters file
+<br>
+
+1. #### Blackboard server
+   The Blackboard is the global server, it runs a continuous loop driven by:
+   - `read()` the parameters file
    - update functions: apply received data into `GameState`
    - update the physics by calling `drone_physics()`
    - ncurses: refreshes the visual interface
    - monitors all pipes simultaneously with `select()`
-       
-     It ensures coordination without requiring components to communicate directly with each other.
+   
+   It ensures coordination without requiring components to communicate directly with each other.
+     
+<br>
 
-#### 2. Input manager
-It is responsable for update the *command forces* stored in `GameState`:
-  - get input from keyboard
-  - convert the input into a control force message 
+2. #### Input manager
+   It is responsable for update the *command forces* stored in `GameState`:
+   - get input from keyboard
+   - convert the input into a control force message
 
-#### 3. Drone process
-It acts as the global **timekeeper**,
-  - uses `nanosleep()` to trigger a tick every 20 ms (50 Hz) for update the **physics engine**
-  - sends a **DRONE_TICK** message via write(`pipe_drone`)
+<br>
 
-#### 4. Target generator
-It is uded to spawn the target every 30 seconds
-  - use `rand()` to compute new positions
-  - - send updates asynchronously using their respective pipes
+3. #### Drone process
+   It acts as the global **timekeeper**:
+   - uses `nanosleep()` to trigger a tick every 20 ms (50 Hz) for update the **physics engine**
+   - sends a **DRONE_TICK** message via write(`pipe_drone`)
 
-#### 5. Target generator
-Similar to the **Target process**, it is uded to spawn the target every 30 seconds
-  - use `rand()` to compute new positions
-  - - send updates asynchronously using their respective pipes
+<br>
 
-#### 6. Watchdog
-It is used to monitor all the system:
-  - monitor all processes using the `heartbeat table`
-  - if detectt the timeout (200ms) semd SIGUSR1 to blackboard to call `endwin()` and kill all processes
+4. #### Target generator
+   It is used to spawn the target every 30 seconds
+   - use `rand()` to compute new positions
+   - send updates asynchronously using their respective pipes
 
-Instead, the shared component are
+<br>
+
+5. #### Target generator
+   Similar to the **Target process**, it is uded to spawn the target every 30 seconds
+   - use `rand()` to compute new positions
+   - send updates asynchronously using their respective pipes
+
+<br>
+
+6. #### Watchdog
+   It is the safety component that monitors system health
+   - **Monitoring Mechanism:**
+     - uses POSIX shared memory (`heartbeat`) with a heartbeat table
+     - each process updates its slot every 20ms with a monotonic timestamp
+     - semaphore protection ensures thread-safe access to the heartbeat table
+    - **Timeout Detection:**
+      - checks all processes every 10ms
+      - if any process stops updating its heartbeat, the watchdog calls the TIMEOUT (2000ms)
+     
+    - **Shutdown Procedure:**
+      - detects unresponsive process or window closure (SIGHUP)
+      - sends `SIGUSR1` to Blackboard: triggers `endwin()` for clean ncurses shutdown
+      - waits 200ms for the cleanup
+      - sends `SIGKILL` to all registered processes
+      - unmaps shared memory and exits
+      
+   - **Monitored Events:**
+      - Process crashes or deadlocks
+      - Terminal window closure
+      - Blackboard termination
+      
+     This ensures the system never leaves zombie processes or corrupted terminal states.
+
+<br>
+  
+Instead, the **shared component** are
   - #### GameState file
       It is a central shared structure, containts in `world` file where all the variables are contained. All processes can read the values by the header.
 
   - #### Map loader
-    `map` is responsable for update the parameters and upload the map.
+    `map` is responsable for update the parameters and upload the world window.
   - #### Shared Heartbeat Memory
     It is impliemented by `heartbeat` process and consider a safety control with the use of a semaphore.
 
@@ -70,66 +102,63 @@ Instead, the shared component are
 ---
 ## Execution Flow
 
-### 1. Initialization
-At startup, the Blackboard:
-- creates `pipe()`
-- spawns child processes (`fork()` + `execlp()`)
-- initializes the `GameState`
-- loads parameters from `parameters.config`
-- loads the map through the Map Loader
-
-All processes are now active and ready to send messages.
-
-<br>
-
-### 2. Runtime Message Flow
-
-#### Input → Blackboard
-- non‑blocking ncurses loop (`nodelay()`, `getch()`)
-- keypress → control force
-- updates `fx_cmd` and `fy_cmd` in `GameState`
-
-#### Drone → Blackboard
-- sends a **DRONE_TICK** every 20 ms (`nanosleep()`)
-- triggers the physics update
-
-#### Targets / Obstacles → Blackboard
-- generate new positions using `rand()`
-- send asynchronous updates through their pipes
-- Blackboard merges updates into `GameState`
+1. ### Initialization
+   At startup, the Blackboard:
+   - creates `pipe()`
+   - spawns child processes (`fork()` + `execlp()`)
+   - initializes the `GameState`
+   - loads parameters from `parameters.config`
+   - loads the map through the Map Loader
+  
+   All processes are now active and ready to send messages.
 
 <br>
 
-### 3. Blackboard Main Loop
-The Blackboard runs a continuous loop:
-- monitors all pipes with `select()`
-- reads available messages (non‑blocking)
-- updates the `GameState`
-- calls `drone_physics()` on each tick
-- refreshes the ncurses interface
+2. ### Runtime Message Flow
+   #### Input → Blackboard
+   - non‑blocking ncurses loop (`nodelay()`, `getch()`)
+   - keypress → control force
+   - updates `fx_cmd` and `fy_cmd` in `GameState`
 
-This loop acts as the **central coordinator** of the system.
+   #### Drone → Blackboard
+   - sends a **DRONE_TICK** every 20 ms (`nanosleep()`)
+   - triggers the physics update
+   
+   #### Targets / Obstacles → Blackboard
+   - generate new positions using `rand()`
+   - send asynchronous updates through their pipes
+   - Blackboard merges updates into `GameState`
 
----
+<br>
 
-### 4. Physics Step
-Triggered by the drone tick:
-- reads current position and velocity
-- computes all forces:
-  - command force  
-  - obstacle repulsion  
-  - fence repulsion  
-  - collision force  
-- applies sub‑stepping integration to avoid tunneling
-- updates the drone state in `GameState`
+3. ### Blackboard Main Loop
+   The Blackboard runs a continuous loop:
+   - monitors all pipes with `select()`
+   - reads available messages (non‑blocking)
+   - updates the `GameState`
+   - calls `drone_physics()` on each tick
+   - refreshes the ncurses interface
+   
+   This loop acts as the **central coordinator** of the system.
 
----
+<br>
 
-### 5. Rendering
-After physics:
-- draws the map
-- draws drone, targets, obstacles
-- updates HUD (forces, velocity, position)
+4. ### Physics Step
+   Triggered by the drone tick:
+   - reads current position and velocity
+   - computes all forces:
+     - command force  
+     - obstacle repulsion  
+     - fence repulsion
+   - applies sub‑stepping integration to avoid tunneling
+   - updates the drone state in `GameState`
+
+<br>
+
+5. ### Rendering
+   - draws the map
+   - draws drone, targets, obstacles
+   - updates HUD (forces, velocity, position)
 
 ![Screenshot](img/screenshot.png)
 
@@ -148,7 +177,9 @@ Where:
 - **M** = mass  
 - **K** = drag coefficient
 - **ΣF** = fresultant force
+
 <br>
+
 ### Forces implemented
 
 1. **Command Force (F<sub>cmd</sub>)**  
@@ -185,10 +216,14 @@ Where:
 <br>
 
 ### Collision handling
-![Collision](img/collision.png) <br>
+![Collision](img/collision.png)
+
+<br>
+
 The `obstacles_hit` considers a a circle around the obstacles `r_collision`. It also considers a nearer area around the obstacels of `r_position` which is responsable for correcting the drone position to avoid the overlap beetween the drone and the obstacle itself. To avoid this overlapping it also impliemed a *sub-stepping* method.
 
 <br>
+
 ### Score System
 The scoring system rewards the player for collecting targets and applies penalties for collisions:
 
@@ -268,6 +303,7 @@ make run-clean #this line is responsable to open the blackboard and input konsol
 make tail-logs #this line is responsable to open the log files
 ```
 <br>
+
 ## Troubleshooting
 ### Issue: "konsole: command not found"
 If you don't have konsole installed, use:
