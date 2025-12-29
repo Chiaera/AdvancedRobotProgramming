@@ -1,23 +1,43 @@
-ARP ASSIGNMENT
+# ARP — Assignments Overview
 
-ASSIGNMENT 1:
-- Blackboard
-- resizing windows
-- pipes and processes for
-    * input (keys)
-    * obstacles
-    * targets
-    * drone dynamics
-- drone moves: physics forces and comunication with blackboard
-- repulsion forces of the targets and the "fence" 
+This repository contains the three ARP assignments, organized as progressive steps of the same project.  
+Each assignment folder includes its own updated and detailed README describing the specific work, design choices, and implementation details.
 
+This README provides an overview of the evolution of the project and highlights the main differences between assignments.  
+Older assignments can be considered the “history” of the project, while the latest one represents the most complete and refined version.
 
-ASSIGNMENT2:
-- watchdog
-- logfile
-- process file
-- score
+---
 
+## ASSIGNMENT 1
+Main implemented elements:
+- **Blackboard architecture**
+- **Window resizing functions**
+- **Processes and pipes** for:
+  - input (keyboard)
+  - obstacles
+  - targets
+  - drone dynamics
+- **Drone movement** based on physics forces and communication with the blackboard
+- **Repulsive forces** from obstacles and the “fence”
 
-ASSIGNMENT3:
-- protocol
+---
+
+## ASSIGNMENT 2
+### Changes from Assignment 1:
+- Renamed `world_physics` to `drone_physics` to better reflect its role
+- Added additional checks on `fork()`, `pipe()`, `read()`, and `write()`
+- Improved the **swirl component** of tangential forces (more stable behaviour)
+- Clearer distinction between **collision radius** and **position radius**
+- Introduced **sub-stepping integration** to avoid tunneling
+- Improved position correction with a **stronger border clamp** (`0.001` to `0.1`)
+
+### New elements:
+- **Watchdog process**
+- **Logfile system**
+- **Process file**
+- **Score tracking**
+
+---
+
+## ASSIGNMENT 3
+- Protocol (to be completed)
