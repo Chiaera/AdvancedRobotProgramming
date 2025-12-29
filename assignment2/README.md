@@ -6,7 +6,10 @@ This project implements an **interactive multi-process drone simulator** based o
 
 ## System Architecture
 
-![Architecture](img/architectures.jpg)
+![Architecture](img/architectures.png)
+
+
+### Components details
 
 The system implements **6 active processes** as required by the assignment specification. They represent a **Blackboard architectural** pattern where multiple autonomous processes communicate with a central server (Blackboard):
 | # | Component | Role | Communication |
@@ -18,84 +21,91 @@ The system implements **6 active processes** as required by the assignment speci
 | 5 | **Obstacles Generator** | Generates random obstacle positions | `pipe_obstacles` |
 | 6 | **Watchdog** | System monitor | Shared memory + signals |
 
-
----
-
-## Component Details & Execution Flow
-1. Initialization
-  When the simulator starts, the **Blackboard server** boots first.
-  It performs the following actions:
-    - Creates IPC channels using `pipe()`.
-    - Spawns child processes (`process_input`, `process_drone`, `process_targets`, `process_obstacles`) using `fork()` and `execlp()`.
-    - Initializes the shared `GameState` structure (map limits, parameters, default drone state)
-    - Reads **simulation parameters** from `parameters.config` (world size, initial position of the drone, number of obstacles and targets, mass M, drag K, obstacle influence radius ρ, repulsion gains η)
-    - Loads map and configuration files via the **Map Loader** (`map.c`), which uses `fopen()`, `fscanf()`, and updates initial fields of the GameState
-   
-   At this stage, all processes are running and ready to send data to the Blackboard
-
-3. Message Flow During Simulation
-  The simulator now enters its main operational phase
-  Each external component contributes information to the Blackboard through a **non-blocking, asynchronous message flow**.
-    * Input Manager → Blackboard
-      - runs an ncurses non-blocking input loop (`nodelay()`, `getch()`)
-      - each keystroke is converted into a control force message
-      - sends messages through write(`pipe_input`)
-      
-      **Effect on flow:**<br>The Blackboard updates the *command force* stored in `GameState`.
-      
-     * Drone Process → Blackboard
-       - acts as the global **timekeeper**,
-       - uses `nanosleep()` to trigger a tick every 20 ms (50 Hz)
-       - sends a **DRONE_TICK** message via write(`pipe_drone`)
+#### 1. Blackboard server
+The Blackboard is the global server, it runs a continuous loop driven by:
+  - `read()` the parameters file
+   - update functions: apply received data into `GameState`
+   - update the physics by calling `drone_physics()`
+   - ncurses: refreshes the visual interface
+   - monitors all pipes simultaneously with `select()`
        
-       **Effect on the flow:**<br>The Blackboard, upon receiving a tick, it is used to trigger the **Physics Engine**.
-      
-    * Targets and Obstacles → Blackboard
-      Both generator processes:
-      - use `rand()` to compute new positions
-      - send updates asynchronously using their respective pipes
-      
-      **Effect on flow:**<br>The Blackboard merges these updates into GameState.targets and GameState.obstacles.
-    
-  4. Blackboard Main Loop (Central Flow Control)
-     The Blackboard runs a continuous loop driven by:
-     - `select()`: monitors all pipes simultaneously
-     - `read()`: retrieves available messages without blocking
-     - update functions: apply received data into `GameState`
-     - `drone_physics_step()`: computes new physics state
-     - ncurses: refreshes the visual interface
-       
-     This loop is the core “heartbeat” of the system.
      It ensures coordination without requiring components to communicate directly with each other.
 
-  5. Physics Update (Triggered by Drone Tick)
-     Whenever a 20 ms tick arrives, the Blackboard calls the Physics Engine.
-     The engine:
-     - reads current position + velocity from `GameState`
-     - compute all the forces (command force, obstacle repulsion and fence repulsion)
-     - writes updated drone state back into `GameState`
-     
-     No IPC is used here: everything is in-memory within the Blackboard.
+#### 2. Input manager
+It is responsable for update the *command forces* stored in `GameState`:
+  - get input from keyboard
+  - convert the input into a control force message 
 
-  6. Rendering Phase
-     After physics is updated, the Blackboard:
-     - draws the map
-     - draws the drone, targets, obstacles
-     - prints HUD elements (velocity, forces, position) using classic ncurses primitives.
-       
-     This creates an interactive console-based simulation refreshed at ~50Hz.
-<br>
+#### 3. Drone process
+It acts as the global **timekeeper**,
+  - uses `nanosleep()` to trigger a tick every 20 ms (50 Hz) for update the **physics engine**
+  - sends a **DRONE_TICK** message via write(`pipe_drone`)
 
-### Shared Component: GameState
-Although not an active process, `GameState` is the central shared structure that:
-- stores all world data
-- receives updates from all external modules
-- is read by the physics engine and renderer
+#### 4. Target generator
+It is uded to spawn the target every 30 seconds
+  - use `rand()` to compute new positions
+  - - send updates asynchronously using their respective pipes
 
-It is declared in `world.h` and acts as the “memory” of the Blackboard.
-  
-<br>
-   
+#### 5. Target generator
+Similar to the **Target process**, it is uded to spawn the target every 30 seconds
+  - use `rand()` to compute new positions
+  - - send updates asynchronously using their respective pipes
+
+#### 6. Watchdog
+It is used to monitor all the system:
+  - managment the heartbeat table
+  - check the status of the processes
+
+Instead, the shared component are
+  - #### GameState file
+      It is a central shared structure, containts in `world` file where all the variables are contained. All processes can read the values by the header.
+
+  - #### Map loader
+    `map` is responsable for update the parameters and upload the map.
+  - #### Shared Heartbeat Memory
+    It is impliemented by `heartbeat` process and consider a safety control with the use of a semaphore.
+
+
+---
+## Execution Flow
+### 1. Initialization
+**Blackboard** 
+  - creates the pipes and the child process with `fork()` and `execlp()` -> active all the processes
+  - initializes the GameState
+  - read the parameters from `parameters.config`
+  - upload the map
+
+### 2. Message from process to blackboard (without blocking the ncurses window)
+**Intput** -> **Blackboard**
+  - convert the keypress in the *command force*
+  - update the force variables `fx_cmd` and `fy_cmd` in `GameState`
+    
+###**Drone** -> **Blackboard**
+  - send tick every 20ms
+  - update the `drone_physics`
+
+###**Targets** -> **Blackboard** and **Obstacles** -> **Blackboard**
+  - send tick every 30ms
+  - respawn the target (or obstacle)
+  - upload the `GameState` position
+
+### Blackboard loop
+  - monitoring pipes with `select()`
+  - `read()` the messages and update the Gamestate with the new values
+  - update the `drone_physics` after the relative tick
+  - `respaw_obstacles()` or `respaw_targets` after receiving the relative tick
+  - rendering the ncurses window
+
+### Physics 
+  - compute the forces: command, obstacles repulsion, fence repulsion and collision
+  - impliemed the sub-stepping method
+  - update the GameState
+
+### Rendering
+  - draw map
+  - draw drone, targets and obstacles
+  - update velocities, forces and positions
+
 ---
 
 ## Physics Model
@@ -150,31 +160,34 @@ Where:
 ## Repository Structure
 The project is structured as follows:
 ```bash
-assignment1/
-│
-├── bin/
-│ └── parameters.config
-├── build/
-│ └── bin/ (compiled executables)
-├── img/
-│ └── architectures.jpg
-├── include/
-│ ├── map.h
-│ ├── process_drone.h
-│ ├── process_input.h
-│ ├── world.h
-│ └── drone_physics.h
-├── src/
-│ ├── blackboard.c
-│ ├── map.c
-│ ├── process_drone.c
-│ ├── process_input.c
-│ ├── process_obstacles.c
-│ ├── process_targets.c
-│ ├── world.c
-│ └── drone_physics.c
-├── Makefile
-└── README.md
+assignment2
+      ├── bin
+      │   └── parameters.config
+      ├── img
+      │   ├── architectures.png
+      │   ├── collision.png
+      │   └── screenshot.png
+      ├── include
+      │   ├── drone_physics.h
+      │   ├── heartbeat.h
+      │   ├── logger.h
+      │   ├── map.h
+      │   ├── process_drone.h
+      │   ├── process_input.h
+      │   └── world.h
+      ├── Makefile
+      ├── README.md
+      └── src
+          ├── blackboard.c
+          ├── drone_physics.c
+          ├── map.c
+          ├── process_drone.c
+          ├── process_input.c
+          ├── process_obstacles.c
+          ├── process_targets.c
+          ├── watchdog.c
+          └── world.c
+
 ```
 
 <br>
