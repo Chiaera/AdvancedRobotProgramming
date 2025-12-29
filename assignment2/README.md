@@ -6,7 +6,7 @@ This project implements an **interactive multi-process drone simulator** based o
 
 ## System Architecture
 
-![Architecture](img/architectures.png)
+![Architecture](img/architecture.png)
 
 
 ### Components details
@@ -106,8 +106,12 @@ Instead, the shared component are
   - draw drone, targets and obstacles
   - update velocities, forces and positions
 
----
+![Screenshot](img/screenshot.png)
 
+
+<br>
+
+---
 ## Physics Model
 
 The drone motion follows the dynamic equation:
@@ -153,11 +157,15 @@ Where:
 4. **Fence Repulsion (F<sub>fence</sub>)**  
    Avoids boundary collisions by pushing the drone away from the world limits.
 
+### Collision drone - obstacle
+![Collision](img/collision.png) <br>
+The `obstacles_hit` consider a a circle around the obstacles `r_collision`. It also consider a nearer area around the obstacels of `r_position` which is responsable to correct the drone position to avoid the overlap beetween the drone and the obstacle itself. To avoid this overlapping it also impliemed a *sub-stepping* method.
+
 <br>
 
 ---
 
-## Repository Structure
+## Project Structure
 The project is structured as follows:
 ```bash
 assignment2
@@ -202,15 +210,23 @@ assignment2
 - `ncurses` library
 - `konsole` (used to spawn subprocesses automatically)
 
+If they are not installed you can run this code
+```
+sudo apt install gcc
+sudo apt-get install libncurses5-dev libncursesw5-dev
+sudo apt install konsole
+```
+
 ### Clone the repository
 ```bash
 gh repo clone Chiaera/AdvancedRobotProgramming
 ```
 
-### Launch
+### Build
 The `MakeFile` is responsable for removing the previous builds and compile all the files, so you can directly run the program.
 ```bash
 #from the assignment1 directory
 cd ~/AdvancedRobotProgramming/assignment1
-make run
+make run-clean #this line is responsable to open the blackboard and input konsole
+make tail-logs #this line is responsable to open the log files
 ```
