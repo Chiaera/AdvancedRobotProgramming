@@ -36,7 +36,7 @@ The system implements **6 active processes**, coordinated through a central serv
 <br>
 
 2. #### Input manager
-   It is responsable for update the *command forces* stored in `GameState`:
+   It is responsible for update the *command forces* stored in `GameState`:
    - get input from keyboard
    - convert the input into a control force message
 
@@ -49,16 +49,16 @@ The system implements **6 active processes**, coordinated through a central serv
 
 <br>
 
-4. #### Target generator
+4. #### Target Generator
    It is used to spawn the target every 30 seconds
-   - use `rand()` to compute new positions
+   - use `rand()` to compute new valid positions
    - send updates asynchronously using their respective pipes
 
 <br>
 
-5. #### Target generator
-   Similar to the **Target process**, it is uded to spawn the target every 30 seconds
-   - use `rand()` to compute new positions
+5. #### Obstacles Generator
+   Similar to the **Target process**, it is used to spawn the obstacles every 30 seconds
+   - use `rand()` to compute new valid positions
    - send updates asynchronously using their respective pipes
 
 <br>
@@ -91,10 +91,10 @@ The system implements **6 active processes**, coordinated through a central serv
   
 Instead, the **shared component** are
   - #### GameState file
-      It is a central shared structure, containts in `world` file where all the variables are contained. All processes can read the values by the header.
+      It is a central shared structure, contained in `world` file where all the variables are contained. All processes can read the values by the header.
 
   - #### Map loader
-    `map` is responsable for update the parameters and upload the world window.
+    `map` is responsible for update the parameters and load the world map.
   - #### Shared Heartbeat Memory
     It is impliemented by `heartbeat` process and consider a safety control with the use of a semaphore.
 
@@ -176,7 +176,7 @@ Where:
 - **p** = drone position (x, y)  
 - **M** = mass  
 - **K** = drag coefficient
-- **ΣF** = fresultant force
+- **ΣF** = resultant force
 
 <br>
 
@@ -220,7 +220,7 @@ Where:
 
 <br>
 
-The `obstacles_hit` considers a a circle around the obstacles `r_collision`. It also considers a nearer area around the obstacels of `r_position` which is responsable for correcting the drone position to avoid the overlap beetween the drone and the obstacle itself. To avoid this overlapping it also impliemed a *sub-stepping* method.
+The `obstacles_hit` considers a a circle around the obstacles `r_collision`. It also considers a nearer area around the obstacles of `r_position` which is responsible for correcting the drone position to avoid the overlap beetween the drone and the obstacle itself. To avoid this overlapping it also implemented a *sub-stepping* method.
 
 <br>
 
@@ -295,12 +295,12 @@ gh repo clone Chiaera/AdvancedRobotProgramming
 ```
 
 ### Build
-The `MakeFile` is responsable for removing the previous builds and compile all the files, so you can directly run the program.
+The `MakeFile` is responsible for removing the previous builds and compile all the files, so you can directly run the program.
 ```bash
 #from the assignment1 directory
 cd ~/AdvancedRobotProgramming/assignment1
-make run-clean #this line is responsable to open the blackboard and input konsole
-make tail-logs #this line is responsable to open the log files
+make run-clean #this line is responsible to open the blackboard and input konsole
+make tail-logs #this line is responsible to open the log files
 ```
 <br>
 
