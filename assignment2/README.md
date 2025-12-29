@@ -1,7 +1,7 @@
 # Assignment 2
 
-his project implements an **interactive multi‑process drone simulator** based on a **Blackboard architecture**. 
-Multiple autonomous processes communicate asynchronously with a central server using Unix pipes, while a watchdog monitors the system through shared memory and semaphores. 
+This project implements an **interactive multi‑process drone simulator** based on a **Blackboard architecture**. 
+Multiple autonomous processes communicate asynchronously with a central server using POSIX pipes, while a watchdog monitors the system through shared memory and semaphores. 
 
 ---
 ## System Architecture
