@@ -53,8 +53,8 @@ Similar to the **Target process**, it is uded to spawn the target every 30 secon
 
 #### 6. Watchdog
 It is used to monitor all the system:
-  - managment the heartbeat table
-  - check the status of the processes
+  - monitor all processes using the `heartbeat table`
+  - if detectt the timeout (200ms) semd SIGUSR1 to blackboard to call `endwin()` and kill all processes
 
 Instead, the shared component are
   - #### GameState file
