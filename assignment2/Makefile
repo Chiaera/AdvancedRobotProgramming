@@ -83,6 +83,11 @@ run-clean: all | $(LOG_DIR)
 	@echo "Starting blackboard"
 	konsole -e ./build/bin/blackboard &
 
+#if there are problems with konsole, run in the same terminal
+run-generic: all | $(LOG_DIR)
+	@echo "Starting blackboard (use Ctrl+C to stop)"
+	@./build/bin/blackboard || true
+
 #shortcut
 r: run-clean
 
