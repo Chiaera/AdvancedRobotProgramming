@@ -1,6 +1,7 @@
 # Assignment 2
 
-This project implements an **interactive multi-process drone simulator** based on a **Blackboard architecture**, where multiple external processes communicate through Unix pipes.
+his project implements an **interactive multi‑process drone simulator** based on a **Blackboard architecture**. 
+Multiple autonomous processes communicate asynchronously with a central server using Unix pipes, while a watchdog monitors the system through shared memory and semaphores. 
 
 ---
 
@@ -11,7 +12,7 @@ This project implements an **interactive multi-process drone simulator** based o
 
 ### Components details
 
-The system implements **6 active processes** as required by the assignment specification. They represent a **Blackboard architectural** pattern where multiple autonomous processes communicate with a central server (Blackboard):
+The system implements **6 active processes**, coordinated through a central server (Blackboard):
 | # | Component | Role | Communication |
 |---|-----------|-------|---------------|
 | 1 | **Blackboard Server** | - Central game server<br>- physics engine<br>- rendering | Pipes + `select()` |
@@ -68,43 +69,67 @@ Instead, the shared component are
 
 ---
 ## Execution Flow
+
 ### 1. Initialization
-**Blackboard** 
-  - creates the pipes and the child process with `fork()` and `execlp()` -> active all the processes
-  - initializes the GameState
-  - read the parameters from `parameters.config`
-  - upload the map
+At startup, the Blackboard:
+- creates `pipe()`
+- spawns child processes (`fork()` + `execlp()`)
+- initializes the `GameState`
+- loads parameters from `parameters.config`
+- loads the map through the Map Loader
 
-### 2. Message from process to blackboard (without blocking the ncurses window)
-**Intput** -> **Blackboard**
-  - convert the keypress in the *command force*
-  - update the force variables `fx_cmd` and `fy_cmd` in `GameState`
-    
-###**Drone** -> **Blackboard**
-  - send tick every 20ms
-  - update the `drone_physics`
+All processes are now active and ready to send messages.
 
-###**Targets** -> **Blackboard** and **Obstacles** -> **Blackboard**
-  - send tick every 30ms
-  - respawn the target (or obstacle)
-  - upload the `GameState` position
+<br>
 
-### Blackboard loop
-  - monitoring pipes with `select()`
-  - `read()` the messages and update the Gamestate with the new values
-  - update the `drone_physics` after the relative tick
-  - `respaw_obstacles()` or `respaw_targets` after receiving the relative tick
-  - rendering the ncurses window
+### 2. Runtime Message Flow
 
-### Physics 
-  - compute the forces: command, obstacles repulsion, fence repulsion and collision
-  - impliemed the sub-stepping method
-  - update the GameState
+#### Input → Blackboard
+- non‑blocking ncurses loop (`nodelay()`, `getch()`)
+- keypress → control force
+- updates `fx_cmd` and `fy_cmd` in `GameState`
 
-### Rendering
-  - draw map
-  - draw drone, targets and obstacles
-  - update velocities, forces and positions
+#### Drone → Blackboard
+- sends a **DRONE_TICK** every 20 ms (`nanosleep()`)
+- triggers the physics update
+
+#### Targets / Obstacles → Blackboard
+- generate new positions using `rand()`
+- send asynchronous updates through their pipes
+- Blackboard merges updates into `GameState`
+
+<br>
+
+### 3. Blackboard Main Loop
+The Blackboard runs a continuous loop:
+- monitors all pipes with `select()`
+- reads available messages (non‑blocking)
+- updates the `GameState`
+- calls `drone_physics()` on each tick
+- refreshes the ncurses interface
+
+This loop acts as the **central coordinator** of the system.
+
+---
+
+### 4. Physics Step
+Triggered by the drone tick:
+- reads current position and velocity
+- computes all forces:
+  - command force  
+  - obstacle repulsion  
+  - fence repulsion  
+  - collision force  
+- applies sub‑stepping integration to avoid tunneling
+- updates the drone state in `GameState`
+
+---
+
+### 5. Rendering
+After physics:
+- draws the map
+- draws drone, targets, obstacles
+- updates HUD (forces, velocity, position)
 
 ![Screenshot](img/screenshot.png)
 
@@ -121,9 +146,9 @@ $$F = M \frac{d^2 p}{dt^2} + K \frac{dp}{dt}$$
 Where:
 - **p** = drone position (x, y)  
 - **M** = mass  
-- **K** = viscous drag coefficient
-- **ΣF** = total force (command + obstacle + fence)
-
+- **K** = drag coefficient
+- **ΣF** = fresultant force
+<br>
 ### Forces implemented
 
 1. **Command Force (F<sub>cmd</sub>)**  
@@ -157,9 +182,21 @@ Where:
 4. **Fence Repulsion (F<sub>fence</sub>)**  
    Avoids boundary collisions by pushing the drone away from the world limits.
 
-### Collision drone - obstacle
+<br>
+
+### Collision handling
 ![Collision](img/collision.png) <br>
-The `obstacles_hit` consider a a circle around the obstacles `r_collision`. It also consider a nearer area around the obstacels of `r_position` which is responsable to correct the drone position to avoid the overlap beetween the drone and the obstacle itself. To avoid this overlapping it also impliemed a *sub-stepping* method.
+The `obstacles_hit` considers a a circle around the obstacles `r_collision`. It also considers a nearer area around the obstacels of `r_position` which is responsable for correcting the drone position to avoid the overlap beetween the drone and the obstacle itself. To avoid this overlapping it also impliemed a *sub-stepping* method.
+
+<br>
+### Score System
+The scoring system rewards the player for collecting targets and applies penalties for collisions:
+
+- **+10 points** for each collected target  
+- **–3 points** for each fence collision  
+- **–5 points** for each obstacle collision  
+
+The final score is updated in real time and displayed in the HUD.
 
 <br>
 
