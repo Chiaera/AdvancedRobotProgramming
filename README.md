@@ -35,7 +35,7 @@ Main implemented elements:
 - **Watchdog process**
 - **Logfile system**
 - **Process file**
-- **Score tracking**
+- **Score system**
 
 ---
 
