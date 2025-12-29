@@ -1,4 +1,4 @@
-# Assignment 1
+# Assignment 2
 
 This project implements an **interactive multi-process drone simulator** based on a **Blackboard architecture**, where multiple external processes communicate through Unix pipes.
 
@@ -6,21 +6,18 @@ This project implements an **interactive multi-process drone simulator** based o
 
 ## System Architecture
 
-The system follows a **Blackboard architectural** pattern where multiple autonomous processes communicate with a central server (Blackboard):
-
 ![Architecture](img/architectures.jpg)
 
-### Principal Components
+The system implements **6 active processes** as required by the assignment specification. They represent a **Blackboard architectural** pattern where multiple autonomous processes communicate with a central server (Blackboard):
+| # | Component | Role | Communication |
+|---|-----------|-------|---------------|
+| 1 | **Blackboard Server** | - Central game server<br>- physics engine<br>- rendering | Pipes + `select()` |
+| 2 | **Input Manager** | - Captures keyboard input<br>- Sends directional commands | `pipe_input` |
+| 3 | **Drone Process** | Sends periodic tick messages (50 Hz) | `pipe_drone` |
+| 4 | **Targets Generator** | Random target spawner | `pipe_targets` |
+| 5 | **Obstacles Generator** | Generates random obstacle positions | `pipe_obstacles` |
+| 6 | **Watchdog** | System monitor | Shared memory + signals |
 
-| Component | Role | Process | Communication |
-|----------|------|---------|----------------|
-| **B: Blackboard Server** | - Central game server<br>- Physics updates<br>- Rendering<br>- Message routing | `blackboard` | Pipes + `select()` |
-| **I: Input Manager** | - Captures keyboard input<br>- Sends directional commands | `process_input` | `pipe_input → Blackboard` |
-| **D: Drone Dynamics** | Sends periodic tick messages (50 Hz) | `process_drone` | `pipe_drone → Blackboard` |
-| **T: Target Generator** | Generates random target positions | `process_targets` | `pipe_targets → Blackboard` |
-| **O: Obstacle Generator** | Generates random obstacle positions | `process_obstacles` | `pipe_obstacles → Blackboard` |
-
-<br>
 
 ---
 
