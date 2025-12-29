@@ -79,8 +79,8 @@ static Force add_obstacles_repulsion(GameState *gs){
             double Fr_y = F_repulsion*ny; //correct radiant force along y
 
             //tangent component (creates "swirling" effect around obstacles)
-            double tx = -ny; 
-            double ty = nx;
+            double tx = ny; 
+            double ty = -nx;
             double Ft_mag = beta * fabs(F_repulsion); //magnitude proportional to radial repulsion (perpendicular direction)
             double Ft_x = Ft_mag * tx; //correct tangent force along x
             double Ft_y = Ft_mag * ty; //correct tangent force along y
@@ -233,7 +233,7 @@ void add_drone_dynamics(GameState *gs){
 
     //add forces to managment the collisions
     Force F_collision = {0,0};
-    double r_collision = 1.6; //used in the proximity of the obstacle
+    double r_collision = 1.4; //used in the proximity of the obstacle
     double r2_collision = r_collision*r_collision;
 
     int contact_obstacle_now = 0; //used to avoid multiple penality on the same obstacle
@@ -305,7 +305,7 @@ void add_drone_dynamics(GameState *gs){
         double new_y = gs->drone.y + gs->drone.vy * dt_sub;
 
         //threshold for checking the position
-        double r_position = 1.3;  //to correct the position after the integration of the forces
+        double r_position = 1.2;  //to correct the position after the integration of the forces
         double r2 = r_position*r_position;
 
         for (int i = 0; i < gs->num_obstacles; ++i) {
@@ -336,7 +336,7 @@ void add_drone_dynamics(GameState *gs){
             gs->drone.vx = 0.0;  
         }
         if (new_x >= gs->world_width) {
-            new_x = gs->world_width - 0.001; 
+            new_x = gs->world_width - 0.1; 
             gs->drone.vx = 0.0;
         }
         if (new_y < 0.0) {
@@ -344,7 +344,7 @@ void add_drone_dynamics(GameState *gs){
             gs->drone.vy = 0.0;
         }
         if (new_y >= gs->world_height) {
-            new_y = gs->world_height - 0.001;
+            new_y = gs->world_height - 0.1;
             gs->drone.vy = 0.0;
         }
         

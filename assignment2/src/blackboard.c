@@ -215,14 +215,14 @@ int print_final_win(GameState *gs, pid_t pid_watchdog) {
     mvwprintw(final_win, 4, 4, "Score: %d", gs->score);
     mvwprintw(final_win, 5, 4, "Obstacles hit: %d", gs->obstacles_hit_tot);
     mvwprintw(final_win, 6, 4, "Fence collisions: %d", gs->fence_collision_tot);
-    mvwprintw(final_win, 8, 2, "Press any key to exit");
+    mvwprintw(final_win, 8, 2, "Press 'e' to exit");
     wrefresh(final_win);
 
     //exit game
+    int ch;
     do {
-    nodelay(stdscr, FALSE);
-    getch(); 
-    } while (0);
+    ch = getch(); 
+    } while (ch != 'e' && ch != 'E');
     delwin(final_win);
 
     return 1; //signal to stop the main loop
