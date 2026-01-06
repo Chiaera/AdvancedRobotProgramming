@@ -1,4 +1,4 @@
-# Assignment 2
+# Assignment 3
 
 This project implements an **interactive multi‑process drone simulator** based on a **Blackboard architecture**. 
 Multiple autonomous processes communicate asynchronously with a central server using POSIX pipes, while a watchdog monitors the system through shared memory and semaphores. 
@@ -240,7 +240,7 @@ The final score is updated in real time and displayed in the HUD.
 ## Project Structure
 The project is structured as follows:
 ```bash
-assignment2
+assignment3 - MODIFICA CARTELLA
       ├── bin
       │   └── parameters.config
       ├── img
@@ -315,9 +315,9 @@ make all
 ```
 
 ### Issue: "Cannot open parameters.config"
-Make sure you're running from the assignment2 directory:
+Make sure you're running from the assignment3 directory:
 ```bash
-pwd  # should end with /assignment2
+pwd  # should end with /assignment3
 ```
 
 ### Issue: Watchdog kills processes immediately
