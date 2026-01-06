@@ -41,7 +41,7 @@ Main implemented elements:
 
 ## ASSIGNMENT 3
 ### Changes from Assignment 1:
-- Added the `current_index_target` to have the target in sequence
+- Added the `current_index_target` variable to have the targets in sequence
 
 ### New elements:
 - **Protocol**
