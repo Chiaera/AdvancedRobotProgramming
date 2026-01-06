@@ -297,8 +297,8 @@ gh repo clone Chiaera/AdvancedRobotProgramming
 ### Build
 The `MakeFile` is responsible for removing the previous builds and compile all the files, so you can directly run the program.
 ```bash
-#from the assignment1 directory
-cd ~/AdvancedRobotProgramming/assignment1
+#from the assignment directory
+cd ~/AdvancedRobotProgramming/assignment3
 make run-clean #this line is responsible to open the blackboard and input konsole
 make tail-logs #this line is responsible to open the log files
 ```
