@@ -40,7 +40,7 @@ Main implemented elements:
 ---
 
 ## ASSIGNMENT 3
-### Changes from Assignment 1:
+### Changes from Assignment 2:
 - Added the `current_index_target` variable to have the targets in sequence
 
 ### New elements:
