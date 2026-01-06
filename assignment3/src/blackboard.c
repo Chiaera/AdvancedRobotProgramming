@@ -768,7 +768,7 @@ int main(int argc, char *argv[])
         calculate_final_score(&gs); //update scoreù
         
         //END-GAME
-        if (gs.num_targets == 0) {
+        if (gs.current_target_index >= gs.total_targets) {
             log_message("BLACKBOARD", "All targets collected");
 
             //kills exist processes
@@ -796,7 +796,7 @@ int main(int argc, char *argv[])
         mvwprintw(info_win, 3, 2, "Fence: fx=%.2f fy=%.2f", gs.fx_fence, gs.fy_fence);
         mvwprintw(info_win, 4, 2, "Vel: vx=%.2f vy=%.2f", gs.drone.vx, gs.drone.vy);
         mvwprintw(info_win, 5, 2, "Pos: x=%.2f y=%.2f", gs.drone.x, gs.drone.y);
-        mvwprintw(info_win, 6, 2, "Targets: %d/%d", (cfg.num_targets - gs.num_targets), cfg.num_targets);
+        mvwprintw(info_win, 6, 2, "Targets: %d/%d", gs.total_target_collected, gs.total_targets);
         wrefresh(info_win);
 
         werase(processes_win);
