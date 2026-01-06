@@ -40,4 +40,8 @@ Main implemented elements:
 ---
 
 ## ASSIGNMENT 3
-- Protocol (to be completed)
+### Changes from Assignment 1:
+- Added the `current_index_target` to have the target in sequence
+
+### New elements:
+- **Protocol**
