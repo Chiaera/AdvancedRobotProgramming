@@ -30,16 +30,19 @@
 #include <stdint.h>
 #include <sys/wait.h>
 #include <signal.h>
+#include <pthread.h>  
 
 #include "heartbeat.h"
 #include "map.h"
 #include "world.h"
 #include "drone_physics.h"
 #include "logger.h"
+#include "network.h" 
 
 #define LOG_PATH "logs/"
 
-
+NetworkState g_net_state; //common state with the thread of network
+pthread_mutex_t g_net_mutex = PTHREAD_MUTEX_INITIALIZER;  //mutex to protect the g_net_state
 // --------------------------------------------------------------- STRUCT
 typedef struct { //use for the input messages, x and y to divide the input force in its directions
     char type;
@@ -108,6 +111,12 @@ static void load_config(const char *path, Config *cfg) {
 
             //obstacles
             else if (!strcmp(key, "NUM_OBSTACLES")) cfg->num_obstacles = atoi(value);
+
+            //network
+            else if (!strcmp(key, "NETWORK_ENABLED")) cfg->network_enabled = atoi(value);
+            else if (!strcmp(key, "NETWORK_PORT")) cfg->network_port = atoi(value);
+            else if (!strcmp(key, "NETWORK_MAX_EXTERNAL_OBSTACLES")) cfg->network_max_external_obstacles = atoi(value);
+            else if (!strcmp(key, "NETWORK_CLIENT_TARGET")) strncpy(cfg->network_client_target, value, sizeof(cfg->network_client_target) - 1);
         }
     }
 
@@ -300,6 +309,24 @@ int main(int argc, char *argv[])
     //initialize the variables of the gamestate struct --------------------------------
     GameState gs; 
     init_game(&gs, &cfg);
+
+    //network initialization --------------------------------------------------------------
+    if (cfg.network_enabled) {
+        int ret = network_state_init(
+            &g_net_state,
+            cfg.world_width,
+            cfg.world_height,
+            cfg.network_max_external_obstacles  
+        );
+        
+        if (ret != 0) {
+            log_message("BLACKBOARD", "ERROR: Failed to initialize network state");
+            cfg.network_enabled = 0;
+        } else {
+            log_message("BLACKBOARD", "Network state initialized (max external obstacles: %d)", 
+                        cfg.network_max_external_obstacles);
+        }
+    }
 
     // SHM ----------------------------------------------------------------------------------------------------------------------
     //create shared memory
@@ -557,6 +584,32 @@ int main(int argc, char *argv[])
         _exit(1);
     }
 
+    //network threads - if abilited
+    pthread_t server_thread, client_thread;
+    int have_server = 0, have_client = 0;
+
+    if (cfg.network_enabled) {
+        log_message("BLACKBOARD", "[NETWORK] Starting network threads");
+        
+        //active server thread
+        if (pthread_create(&server_thread, NULL, network_server_thread, &cfg.network_port) == 0) {
+            have_server = 1;
+            log_message("BLACKBOARD", "[NETWORK] Server thread started on port %d", cfg.network_port);
+        } else {
+            log_message("BLACKBOARD", "[NETWORK] ERROR: Failed to create server thread");
+        }
+        
+        //active client thread (if target specified)
+        if (cfg.network_client_target[0] != '\0') {
+            if (pthread_create(&client_thread, NULL, network_client_thread, cfg.network_client_target) == 0) {
+                have_client = 1;
+                log_message("BLACKBOARD", "[NETWORK] Client thread started (target: %s)", cfg.network_client_target);
+            } else {
+                log_message("BLACKBOARD", "[NETWORK] ERROR: Failed to create client thread");
+            }
+        }
+    }
+
     sigprocmask(SIG_UNBLOCK, &mask, NULL); //deactive signalmask 
     log_message("BLACKBOARD", "[BOOT] Signal mask deactive", bb_log_counter++);
 
@@ -765,7 +818,16 @@ int main(int argc, char *argv[])
         }
 
         drone_target_collide(&gs); //manages the collision
-        calculate_final_score(&gs); //update scoreù
+
+        //update NetworkState with the new drone position
+        if (cfg.network_enabled) {
+            pthread_mutex_lock(&g_net_mutex);
+            g_net_state.drone_x = gs.drone.x;
+            g_net_state.drone_y = gs.drone.y;
+            pthread_mutex_unlock(&g_net_mutex);
+        }
+
+        calculate_final_score(&gs); //update score
         
         //END-GAME
         if (gs.current_target_index >= gs.total_targets) {
@@ -856,6 +918,22 @@ int main(int argc, char *argv[])
 //CLEANUP 
 cleanup:
     log_message("BLACKBOARD", "Entering cleanup phase");
+
+     //network cleanup
+    if (cfg.network_enabled) {
+        log_message("BLACKBOARD", "Stopping network threads...");
+        
+        pthread_mutex_lock(&g_net_mutex);
+        g_net_state.server_running = 0;
+        pthread_mutex_unlock(&g_net_mutex);
+        
+        //wait thread (with timeout)
+        if (have_server) pthread_join(server_thread, NULL);
+        if (have_client) pthread_join(client_thread, NULL);
+        
+        network_state_cleanup(&g_net_state);
+        log_message("BLACKBOARD", "Network cleanup completed");
+    }
     
     nanosleep(&ts, NULL); //delay for killing all processes (200ms)
     

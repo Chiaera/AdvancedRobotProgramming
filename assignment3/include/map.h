@@ -130,6 +130,12 @@ typedef struct {
     //obstacles
     int num_obstacles;
     int obstacle_reloc; 
+
+    //nerwork
+    int network_enabled;           
+    int network_port;              
+    int network_max_external_obstacles; 
+    char network_client_target[256]; 
 } Config;
 
 //------------------------------------------------------------------------FUNCTIONS

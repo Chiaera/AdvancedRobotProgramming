@@ -36,6 +36,7 @@ DRONE_SRC := $(SRC_DIR)/process_drone.c
 OBSTACLES_SRC := $(SRC_DIR)/process_obstacles.c
 TARGET_SRC := $(SRC_DIR)/process_targets.c
 WATCHDOG_SRC := $(SRC_DIR)/watchdog.c
+NETWORK_SRC := $(SRC_DIR)/network.c
 
 
 #default rule
@@ -50,8 +51,8 @@ $(LOG_DIR):
 	touch $(SYSTEM_LOG) $(WATCHDOG_LOG)
 
 #blackboard
-$(BLACKBOARD): $(BLACKBOARD_SRC) | $(BIN_DIR)
-	$(CC) $(CFLAGS) $(BLACKBOARD_SRC) -o $@ $(LDFLAGS_NCURSES) $(LDFLAGS_MATH) $(LDFLAGS_PTHREAD)
+$(BLACKBOARD): $(BLACKBOARD_SRC) $(NETWORK_SRC) | $(BIN_DIR)
+	$(CC) $(CFLAGS) $(BLACKBOARD_SRC) $(NETWORK_SRC) -o $@ $(LDFLAGS_NCURSES) $(LDFLAGS_MATH) $(LDFLAGS_PTHREAD)
 #input
 $(INPUT_PROCESS): $(INPUT_SRC) | $(BIN_DIR)
 	$(CC) $(CFLAGS) $(INPUT_SRC) -o $@ $(LDFLAGS_NCURSES) $(LDFLAGS_PTHREAD)
