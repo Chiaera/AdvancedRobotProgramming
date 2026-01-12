@@ -260,7 +260,7 @@ The client-server protocol is a sequential handshake followed by a cyclic exchan
    SERVER → CLIENT: "drone_x drone_y"            
    CLIENT → SERVER: "dok drone"   
    ```
-   and the obstacles, one by one:
+   and the position of client server interpreted as ab obstacles in the server, every messages corresponds an external obstacle:
    ```
    SERVER → CLIENT: "obst"
    CLIENT → SERVER: "ostacolo_x ostacolo_y"             
