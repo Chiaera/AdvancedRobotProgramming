@@ -17,7 +17,7 @@ The system implements **6 active processes**, coordinated through a central serv
 | 1 | **Blackboard Server** | - Central game server<br>- physics engine<br>- rendering | Pipes + `select()` |
 | 2 | **Input Manager** | - Captures keyboard input<br>- Sends directional commands | `pipe_input` |
 | 3 | **Drone Process** | Sends periodic tick messages (50 Hz) | `pipe_drone` |
-| 4 | **Targets Generator** | Random target spawner | `pipe_targets` |
+| 4 | **Target Generator** | Random target spawner | `pipe_targets` |
 | 5 | **Obstacles Generator** | Generates random obstacle positions | `pipe_obstacles` |
 | 6 | **Watchdog** | System monitor | Shared memory + signals |
 
