@@ -1,7 +1,7 @@
 # Assignment 3
 
 This project implements an **interactive multi‑process drone simulator** based on a **Blackboard architecture**. 
-Multiple autonomous processes communicate asynchronously with a central server using POSIX pipes, while a watchdog monitors the system through shared memory and semaphores. 
+Multiple autonomous processes communicate asynchronously with a central server using POSIX pipes, while a watchdog monitors the system through shared memory and semaphores. The project implemented a `protocol` to allow the interaction with other projects. 
 
 ---
 ## System Architecture
@@ -232,6 +232,47 @@ The scoring system rewards the player for collecting targets and applies penalti
 - **–5 points** for each obstacle collision  
 
 The final score is updated in real time and displayed in the HUD.
+
+<br>
+
+---
+## Protocol
+The client-server protocol is a sequential handshake followed by a cyclic exchange of information between two drone simulators through 3 steps.
+
+1. ### Handshake
+   It verify that both programs are ready:
+   ```
+   SERVER → CLIENT: "ok"
+   CLIENT → SERVER: "ook"
+   ```
+2. ### Exchange information about the world size
+   It verify the worlds compatibility:
+   ```
+   SERVER → CLIENT: "size width height"       
+   CLIENT → SERVER: "sok wxh"     
+   ```
+
+3. ### Main infinite loop
+   It actually responsible for the interaction between the simulators. <br>
+   it exchange the drone position:
+   ```
+   SERVER → CLIENT: "drone"
+   SERVER → CLIENT: "drone_x drone_y"            
+   CLIENT → SERVER: "dok drone"   
+   ```
+   and the obstacles, one by one:
+   ```
+   SERVER → CLIENT: "obst"
+   CLIENT → SERVER: "ostacolo_x ostacolo_y"             
+   SERVER → CLIENT: "pok obstacle_i"  
+   ```
+   it continues until the similation end or the 'q' (quit) is pressdown:
+   ```
+   SERVER → CLIENT: "q"                  
+   CLIENT → SERVER: "qok" 
+   ```
+
+The protocol is implemented as **thread** so it can access directly to the `GameState` structure. To avoid the problem to access at same data of the blackboard the is used the principle of the mutual exclusion `MUTEX`. 
 
 <br>
 
