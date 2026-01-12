@@ -237,42 +237,60 @@ The final score is updated in real time and displayed in the HUD.
 
 ---
 ## Protocol
-The client-server protocol is a sequential handshake followed by a cyclic exchange of information between two drone simulators through 3 steps.
+The client-server protocol is a sequential handshake followed by a cyclic exchange of information between two drone simulators through 4 steps:
 
 1. ### Handshake
-   It verify that both programs are ready:
+   This step ensures that both simulators are alive and speaking the same protocol.
    ```
    SERVER → CLIENT: "ok"
    CLIENT → SERVER: "ook"
    ```
+   The connection continues only if the client replies correctly.
+   
 2. ### Exchange information about the world size
-   It verify the worlds compatibility:
+   The server communicates its world dimensions so the client can verify compatibility.
    ```
    SERVER → CLIENT: "size width height"       
    CLIENT → SERVER: "sok wxh"     
    ```
+   The server checks only that the reply begins with `"sok"`.
 
 3. ### Main infinite loop
-   It actually responsible for the interaction between the simulators. <br>
-   it exchange the drone position:
+   The server and client enter a sequential, blocking loop. Each iteration consists of two phases. <br>
+   First the server sends its drone position; the client acknowledges.
    ```
    SERVER → CLIENT: "drone"
    SERVER → CLIENT: "drone_x drone_y"            
    CLIENT → SERVER: "dok drone"   
    ```
-   and the position of client server interpreted as ab obstacles in the server, every messages corresponds an external obstacle:
+   Then the server requests one obstacle at a time. <br>
+   The client responds by sending **its own drone position**, which the server stores as an *external obstacle*.
    ```
    SERVER → CLIENT: "obst"
    CLIENT → SERVER: "ostacolo_x ostacolo_y"             
    SERVER → CLIENT: "pok obstacle_i"  
    ```
-   it continues until the similation end or the 'q' (quit) is pressdown:
+   Each response corresponds to one external obstacle slot in the server’s `NetworkState`.
+
+5. ### Quit
+   The loop ends when the server decides to stop the exchange.
    ```
    SERVER → CLIENT: "q"                  
    CLIENT → SERVER: "qok" 
    ```
-The protocol is implemented as **thread** so it can access directly to the `GameState` structure. To avoid the problem to access at same data of the blackboard the is used the principle of the mutual exclusion `MUTEX`. 
+   <br>
+   
+The protocol is implemented as **thread** so it can access directly to the `GameState` structure and both the **server thread** and **client thread** access the shared `NetworkState` structure.
+
 ![Protocol](img/protocol.png)
+
+To prevent race conditions with the Blackboard (which also reads/writes the same data), all accesses are protected using the principle of the mutual exclusion `MUTEX`:
+```
+pthread_mutex_lock(&g_net_mutex);
+/* read/write shared state */
+pthread_mutex_unlock(&g_net_mutex);
+```
+This ensures consistent updates of drone positions and external obstacles.
 
 <br>
 
