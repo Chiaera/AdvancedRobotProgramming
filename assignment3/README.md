@@ -271,7 +271,6 @@ The client-server protocol is a sequential handshake followed by a cyclic exchan
    SERVER → CLIENT: "q"                  
    CLIENT → SERVER: "qok" 
    ```
-
 The protocol is implemented as **thread** so it can access directly to the `GameState` structure. To avoid the problem to access at same data of the blackboard the is used the principle of the mutual exclusion `MUTEX`. 
 ![Protocol](img/protocol.png)
 
