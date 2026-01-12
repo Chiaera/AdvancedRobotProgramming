@@ -79,6 +79,8 @@ typedef struct {
     //obstacles
     int num_obstacles;
     Obstacle obstacles[MAX_OBSTACLES];
+    Obstacle external_obstacles[MAX_OBSTACLES]; //to store external obstacles from network
+    int num_external_obstacles;
 
     //target
     int num_targets;

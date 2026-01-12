@@ -154,6 +154,21 @@ void render(Screen *s, GameState *g){
         
     }
 
+    // external obstacles
+    for (int i = 0; i < g->num_external_obstacles; i++) {
+        int ox = 1 + (int)round(g->external_obstacles[i].x * sx);
+        int oy = 1 + (int)round(g->external_obstacles[i].y * sy);
+        if (ox < 1) ox = 1;
+        if (ox > s->width-2) ox = s->width-2;
+        if (oy < 1) oy = 1;
+        if (oy > s->height-2) oy = s->height-2;
+
+        //to distinguish them from the internal: blu and 'X'
+        wattron(s->win, COLOR_PAIR(4)); 
+        mvwaddch(s->win, oy, ox, 'X'); 
+        wattroff(s->win, COLOR_PAIR(4));
+    }
+
     // drone need to be inside the map 
     int dx = 1 + (int)round(g->drone.x * sx);
     int dy = 1 + (int)round(g->drone.y * sy);

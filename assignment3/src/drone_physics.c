@@ -6,10 +6,12 @@
 */
 
 #include <math.h>
+#include <pthread.h>  
 
 #include "drone_physics.h"   
 #include "map.h" 
 #include "logger.h"
+#include "network.h" 
 
 typedef struct{ //for save the values of the forces in the directions x and y
     double fx;
@@ -50,6 +52,10 @@ static inline double pow_distance(double dx, double dy){
 }
 
 static Force add_obstacles_repulsion(GameState *gs){
+    //to consider the external obstacles
+    extern NetworkState g_net_state;
+    extern pthread_mutex_t g_net_mutex;
+
     Force F = {0,0}; //default force
 
     //set the variables with the config values
@@ -93,6 +99,43 @@ static Force add_obstacles_repulsion(GameState *gs){
         gs->fx_obst = F.fx; 
         gs->fy_obst = F.fy;
     }
+
+    //loop for the external obstacles - same of the internal obstacles
+    pthread_mutex_lock(&g_net_mutex);
+    for (int i = 0; i < gs->num_external_obstacles; i++) {
+        double dx = (double)gs->drone.x - (double)gs->external_obstacles[i].x; 
+        double dy = (double)gs->drone.y - (double)gs->external_obstacles[i].y;
+        double pow_d = pow_distance(dx, dy);
+        if (pow_d < 1e-6) pow_d = 1e-6;
+        double d = sqrt(pow_d); 
+        
+        if(d<rho){
+            //Khatib potential field: F_repulsion = eta * (1/d - 1/rho) * (1/d^2) * ((q - q_obs)/d), d=ρ(q)
+            double F_repulsion = eta * (1/d - 1/rho) * (1/ pow_d);
+
+            //radiant component (versor: (q - q_obs)/d)
+            double nx = dx/d;
+            double ny = dy/d;
+            double Fr_x = F_repulsion*nx; 
+            double Fr_y = F_repulsion*ny; 
+
+            //tangent component (creates "swirling" effect around obstacles)
+            double tx = ny; 
+            double ty = -nx;
+            double Ft_mag = beta * fabs(F_repulsion); //magnitude proportional to radial repulsion (perpendicular direction)
+            double Ft_x = Ft_mag * tx;
+            double Ft_y = Ft_mag * ty; 
+
+            //repulsive force
+            F.fx += Fr_x + Ft_x; 
+            F.fy += Fr_y  +Ft_y; 
+        }
+        //update the repulsion force from the obstacles in the GameState struct
+        gs->fx_obst = F.fx; 
+        gs->fy_obst = F.fy;
+    }
+    pthread_mutex_unlock(&g_net_mutex);
+
     return F;
 }
 
@@ -238,6 +281,7 @@ void add_drone_dynamics(GameState *gs){
 
     int contact_obstacle_now = 0; //used to avoid multiple penality on the same obstacle
 
+    //internal obstacles
     for (int i = 0; i < gs->num_obstacles; i++) {
         double dx = gs->drone.x - (double)gs->obstacles[i].x;
         double dy = gs->drone.y - (double)gs->obstacles[i].y;
@@ -249,6 +293,29 @@ void add_drone_dynamics(GameState *gs){
             if (d2 < 1e-9) { //prevent division by zero
                 d2 = 1e-9;
             }
+            double d = sqrt(d2);
+            
+            //high forces on the obstacles -> no overlap with obstacle
+            double strength = gs->max_force * 16.0 * (r_collision / d - 1.0);
+            
+            //forces along the directions x and y
+            double nx = dx / d;
+            double ny = dy / d;
+            F_collision.fx += strength * nx;
+            F_collision.fy += strength * ny;
+        }
+    }
+
+    //external obstacles
+    for (int i = 0; i < gs->num_external_obstacles; i++) {
+        double dx = gs->drone.x - (double)gs->external_obstacles[i].x;
+        double dy = gs->drone.y - (double)gs->external_obstacles[i].y;
+        double d2 = dx*dx + dy*dy;
+        
+        if (d2 < r2_collision) {
+            contact_obstacle_now = 1;
+
+            if (d2 < 1e-9) d2 = 1e-9;
             double d = sqrt(d2);
             
             //high forces on the obstacles -> no overlap with obstacle

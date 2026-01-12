@@ -827,24 +827,46 @@ int main(int argc, char *argv[])
             pthread_mutex_unlock(&g_net_mutex);
         }
 
+        //uploard external obstacles from NetworkState to GameState
+        if (cfg.network_enabled) {
+            pthread_mutex_lock(&g_net_mutex);
+            
+            //copy external obstacles in GameState
+            for (int i = 0; i < g_net_state.num_external_obstacles; i++) {
+                if (g_net_state.external_obstacles[i].active && i < MAX_OBSTACLES) {
+                    gs.external_obstacles[i].x = g_net_state.external_obstacles[i].x;
+                    gs.external_obstacles[i].y = g_net_state.external_obstacles[i].y;
+                }
+            }
+            gs.num_external_obstacles = g_net_state.num_external_obstacles;
+            
+            pthread_mutex_unlock(&g_net_mutex);
+        }
+
         calculate_final_score(&gs); //update score
         
         //END-GAME
         if (gs.current_target_index >= gs.total_targets) {
-            log_message("BLACKBOARD", "All targets collected");
+            pthread_mutex_lock(&g_net_mutex);
+            g_net_state.server_running = 0;  
+            pthread_mutex_unlock(&g_net_mutex);
 
-            //kills exist processes
-            kill(pid_watchdog, SIGTERM); //first kill watchdog to avoid wrong sigusr1
-            kill(pid_input, SIGTERM); 
-            kill(pid_drone, SIGTERM); 
-            kill(pid_targets, SIGTERM); 
-            kill(pid_obstacles, SIGTERM); 
+            if (gs.current_target_index >= gs.total_targets) {
+                log_message("BLACKBOARD", "All targets collected");
 
-            log_message("BLACKBOARD", "Open the final statistics");
-            g_stop = print_final_win(&gs, pid_watchdog); //call function to print final statistics
-            log_message("BLACKBOARD", "Final statistics, shutting down");
+                //kills exist processes
+                kill(pid_watchdog, SIGTERM); //first kill watchdog to avoid wrong sigusr1
+                kill(pid_input, SIGTERM); 
+                kill(pid_drone, SIGTERM); 
+                kill(pid_targets, SIGTERM); 
+                kill(pid_obstacles, SIGTERM); 
 
-            break; //exit the main loop
+                log_message("BLACKBOARD", "Open the final statistics");
+                g_stop = print_final_win(&gs, pid_watchdog); //call function to print final statistics
+                log_message("BLACKBOARD", "Final statistics, shutting down");
+
+                break; //exit the main loop
+            }
         }
 
         render(&screen, &gs);

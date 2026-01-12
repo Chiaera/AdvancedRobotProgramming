@@ -253,7 +253,7 @@ void handle_client(int client_fd) {
         
         int ox, oy;
         if (sscanf(buffer, "%d %d", &ox, &oy) == 2) {
-            //save obst external of NetworkState
+            //save obst in g_net_state.external_obstacles
             pthread_mutex_lock(&g_net_mutex);
             
             //find a free slot
@@ -466,14 +466,11 @@ void* network_client_thread(void* arg) {
             break;
         }
         
-        //send one random obstacles
+        //send the client drone position
         pthread_mutex_lock(&g_net_mutex);
-        int our_w = g_net_state.world_width;
-        int our_h = g_net_state.world_height;
+        int ox = (int)g_net_state.drone_x;  
+        int oy = (int)g_net_state.drone_y;  
         pthread_mutex_unlock(&g_net_mutex);
-        
-        int ox = rand() % our_w;
-        int oy = rand() % our_h;
         
         char obst_pos[BUFFER_SIZE];
         snprintf(obst_pos, sizeof(obst_pos), "%d %d", ox, oy);
