@@ -299,18 +299,20 @@ This ensures consistent updates of drone positions and external obstacles.
 ## Project Structure
 The project is structured as follows:
 ```bash
-assignment3 - MODIFICA CARTELLA
+assignment3 
       ├── bin
       │   └── parameters.config
       ├── img
-      │   ├── architectures.png
+      │   ├── architecture.png
       │   ├── collision.png
+      │   ├── protocol.png
       │   └── screenshot.png
       ├── include
       │   ├── drone_physics.h
       │   ├── heartbeat.h
       │   ├── logger.h
       │   ├── map.h
+      │   ├── network.h
       │   ├── process_drone.h
       │   ├── process_input.h
       │   └── world.h
@@ -320,13 +322,13 @@ assignment3 - MODIFICA CARTELLA
           ├── blackboard.c
           ├── drone_physics.c
           ├── map.c
+          ├── network.c
           ├── process_drone.c
           ├── process_input.c
           ├── process_obstacles.c
           ├── process_targets.c
           ├── watchdog.c
           └── world.c
-
 ```
 
 <br>
