@@ -53,7 +53,6 @@ static inline double pow_distance(double dx, double dy){
 
 static Force add_obstacles_repulsion(GameState *gs){
     //to consider the external obstacles
-    extern NetworkState g_net_state;
     extern pthread_mutex_t g_net_mutex;
 
     Force F = {0,0}; //default force

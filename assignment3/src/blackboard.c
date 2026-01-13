@@ -585,24 +585,28 @@ int main(int argc, char *argv[])
     }
 
     //network threads - if abilited
-    pthread_t server_thread, client_thread;
-    int have_server = 0, have_client = 0;
+    pthread_t server_thread = 0; 
+    pthread_t client_thread = 0;
+    int have_server = 0; 
+    int have_client = 0;
 
     if (cfg.network_enabled) {
         log_message("BLACKBOARD", "[NETWORK] Starting network threads");
         
         //active server thread
-        if (pthread_create(&server_thread, NULL, network_server_thread, &cfg.network_port) == 0) {
-            have_server = 1;
-            log_message("BLACKBOARD", "[NETWORK] Server thread started on port %d", cfg.network_port);
+        have_server = (pthread_create( &server_thread, NULL, network_server_thread, &cfg.network_port ) == 0);
+        
+        if (have_server) {
+            log_message("BLACKBOARD", "[NETWORK] Server thread started (port: %d)", cfg.network_port);
         } else {
             log_message("BLACKBOARD", "[NETWORK] ERROR: Failed to create server thread");
         }
         
-        //active client thread (if target specified)
-        if (cfg.network_client_target[0] != '\0') {
-            if (pthread_create(&client_thread, NULL, network_client_thread, cfg.network_client_target) == 0) {
-                have_client = 1;
+        //active client thread 
+        if (cfg.network_client_target[0] != '\0') {  //check if the target is not empty
+            have_client = (pthread_create( &client_thread, NULL, network_client_thread, cfg.network_client_target ) == 0);
+            
+            if (have_client) {
                 log_message("BLACKBOARD", "[NETWORK] Client thread started (target: %s)", cfg.network_client_target);
             } else {
                 log_message("BLACKBOARD", "[NETWORK] ERROR: Failed to create client thread");
@@ -757,17 +761,17 @@ int main(int argc, char *argv[])
             if (nr != sizeof(mt)) continue; //error of reading
 
             if (mt.type == 'R') {
-                int remains_target = mt.num;
-                if (remains_target > gs.num_targets) {
-                    remains_target = gs.num_targets; // relocation of the remains targets. They should be the same for architecture choices
+                int n = mt.num;
+                if (n > gs.num_targets) {
+                    n = gs.num_targets; // relocation of the remains targets. They should be the same for architecture choices
                 }
-                for (int i = 0; i < remains_target; i++) {
+                for (int i = 0; i < n; i++) {
                     gs.targets[i] = mt.targets[i]; //new vector for the remains targets 
                 }
-                log_message("BLACKBOARD", "Target remaining: %d", remains_target);
+                log_message("BLACKBOARD", "Target respawned");
                 
                 //check overlap with obstacles
-                for (int i = 0; i < remains_target; i++) {
+                for (int i = 0; i < n; i++) {
                     for (int j = 0; j < gs.num_obstacles; j++) {
                         if (gs.targets[i].x == gs.obstacles[j].x && gs.targets[i].y == gs.obstacles[j].y) {
                             respawn_target(&gs, i);
