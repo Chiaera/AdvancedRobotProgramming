@@ -290,8 +290,34 @@ pthread_mutex_lock(&g_net_mutex);
 /* read/write shared state */
 pthread_mutex_unlock(&g_net_mutex);
 ```
-This ensures consistent updates of drone positions and external obstacles.
+This ensures consistent updates of drone positions and external obstacles. <br>
 
+### Set protocol parameter
+It is possible running the simulator as four different mode: **server**, **client**, **peer-to-peer** and **offline**.
+The mode is selected through the network section of  `parameters.config`.
+
+Before it is necessary know the *IP address* of the device that will be used as **server**, open the terminal and run:
+``` 
+   ip addr show | grep "inet "
+
+   #example:
+   #   inet 127.0.0.1/8 scope host lo
+   #   inet 192.168.1.23/24 brd 192.168.1.255 scope global dynamic noprefixroute wlp0s20f3
+```
+
+* NETWORK_ENABLED: enables (=1) or disables (=0) network mode
+* NETWORK_PORT: port on which the server listens(e.g., =8888)
+* NETWORK_CLIENT_TARGET: IP and port of the server to which the client connects (e.g., =192.168.1.23:8888)
+
+The **drone simulation** can be run as:
+|Mode |NETWORK_ENABLED |NETWORK_PORT |NETWORK_CLIENT_TARGET |
+|------------ |------------ |------------ |------------ |
+|server |1 |8888 |*(empty)* | 
+|client |1 |8888 |192.168.1.23:8888 | 
+|peer-to-peer |1 |8888 |192.168.1.23:8888 *( * )* | 
+|offline |0 |- |*(empty)* | 
+
+(*) *In peer‑to‑peer mode, the simulator starts both the server thread and the client thread, allowing symmetric communication.*
 <br>
 
 ---
