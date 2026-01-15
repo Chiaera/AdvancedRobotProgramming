@@ -120,6 +120,11 @@ static void load_config(const char *path, Config *cfg) {
         }
     }
 
+    if (cfg->network_enabled) {
+        cfg->num_obstacles = 0;  
+        cfg->num_targets = 0;  
+    }
+
     fclose(f);
 }
 
@@ -137,6 +142,7 @@ void apply_new_parameters(GameState *gs, Config *cfg) {
     gs->world_width = cfg->world_width;
     gs->world_height = cfg->world_height;
 }
+
 
 //for the WATCHDOG
 static volatile sig_atomic_t g_stop = 0; //used for the shutdown request
@@ -258,7 +264,7 @@ int main(int argc, char *argv[])
     load_config("bin/parameters.config", &cfg);
     log_message("BLACKBOARD", "[BOOT] Config loaded: %dx%d world, %d obstacles, %d targets",
                 cfg.world_width, cfg.world_height, cfg.num_obstacles, cfg.num_targets, bb_log_counter++);
-    
+
     //helper
     if (argc > 1 && (!strcmp(argv[1], "-h") || !strcmp(argv[1], "--help"))) {
         print_help();
@@ -436,153 +442,159 @@ int main(int argc, char *argv[])
     }
     log_message("BLACKBOARD", "[BOOT] Signal mask active", bb_log_counter++);
 
-    //input
-    pid_input = fork();
-    if(pid_input < 0) { // error
-        perror("fork failed for process_input");
-        log_message("BLACKBOARD", "ERROR: fork failed for INPUT");
-        g_stop = 1;
-        exit(1);
-    } else if (pid_input == 0){ //child process of the input process
-        //pipes not used
-        close(pipe_input[0]); 
-        close(pipe_drone[0]);
-        close(pipe_drone[1]);
-        close(pipe_targets[0]);
-        close(pipe_targets[1]);
-        close(pipe_obstacles[0]);
-        close(pipe_obstacles[1]);
+    if (!cfg.network_enabled) {
+        //input
+        pid_input = fork();
+        if(pid_input < 0) { // error
+            perror("fork failed for process_input");
+            log_message("BLACKBOARD", "ERROR: fork failed for INPUT");
+            g_stop = 1;
+            exit(1);
+        } else if (pid_input == 0){ //child process of the input process
+            //pipes not used
+            close(pipe_input[0]); 
+            close(pipe_drone[0]);
+            close(pipe_drone[1]);
+            close(pipe_targets[0]);
+            close(pipe_targets[1]);
+            close(pipe_obstacles[0]);
+            close(pipe_obstacles[1]);
 
-        char fd_str[16];
-        snprintf(fd_str, sizeof(fd_str), "%d", pipe_input[1]);
+            char fd_str[16];
+            snprintf(fd_str, sizeof(fd_str), "%d", pipe_input[1]);
 
-        char slot_str[8]; //used for the watchdog processes
-        snprintf(slot_str, sizeof(slot_str), "%d", HB_SLOT_INPUT);
-        execlp("konsole", "konsole", "-e", "./build/bin/process_input",
-            fd_str, HB_SHM_NAME, slot_str, (char *)NULL);
-        perror("execlp process_input failed");
-        _exit(1);
-    } else {
-        log_message("BLACKBOARD", "Forked INPUT process with PID=%d", pid_input);
-    }
+            char slot_str[8]; //used for the watchdog processes
+            snprintf(slot_str, sizeof(slot_str), "%d", HB_SLOT_INPUT);
+            execlp("konsole", "konsole", "-e", "./build/bin/process_input",
+                fd_str, HB_SHM_NAME, slot_str, (char *)NULL);
+            perror("execlp process_input failed");
+            _exit(1);
+        } else {
+            log_message("BLACKBOARD", "Forked INPUT process with PID=%d", pid_input);
+        }
 
-    // drone
-    pid_drone = fork();
-    if(pid_drone < 0){ //error
-        perror("fork failed for process_drone");
-        log_message("BLACKBOARD", "ERROR: fork failed for DRONE");
-        g_stop = 1;
-        exit(1);
-    } else if(pid_drone == 0){ //child process of the drone process
-        //pipes not used
-        close(pipe_drone[0]);
-        close(pipe_input[0]);
-        close(pipe_input[1]);
-        close(pipe_targets[0]);
-        close(pipe_targets[1]);
-        close(pipe_obstacles[0]);
-        close(pipe_obstacles[1]);
+        // drone
+        pid_drone = fork();
+        if(pid_drone < 0){ //error
+            perror("fork failed for process_drone");
+            log_message("BLACKBOARD", "ERROR: fork failed for DRONE");
+            g_stop = 1;
+            exit(1);
+        } else if(pid_drone == 0){ //child process of the drone process
+            //pipes not used
+            close(pipe_drone[0]);
+            close(pipe_input[0]);
+            close(pipe_input[1]);
+            close(pipe_targets[0]);
+            close(pipe_targets[1]);
+            close(pipe_obstacles[0]);
+            close(pipe_obstacles[1]);
 
-        char fd_str[16];
-        snprintf(fd_str, sizeof(fd_str), "%d", pipe_drone[1]);
+            char fd_str[16];
+            snprintf(fd_str, sizeof(fd_str), "%d", pipe_drone[1]);
+            
+            char slot_str[8]; //used for the watchdog processes
+            snprintf(slot_str, sizeof(slot_str), "%d", HB_SLOT_DRONE);
+            execlp("./build/bin/process_drone", "./build/bin/process_drone",
+                fd_str, HB_SHM_NAME, slot_str, (char *)NULL);
+            perror("execlp process_drone failed");
+            _exit(1);
+        } else {
+            log_message("BLACKBOARD", "Forked DRONE process with PID=%d", pid_drone);
+        }
+
+        // target
+        pid_targets = fork();
+        if(pid_targets < 0){ //error
+            perror("fork failed for process_targets");
+            log_message("BLACKBOARD", "ERROR: fork failed for TARGETS");
+            g_stop = 1;
+            exit(1);
+        } else if (pid_targets == 0) { //child process of the targets process
+            //pipes not used
+            close(pipe_targets[0]); //use only pipe_targets[1] for the tick
+            close(pipe_input[0]);
+            close(pipe_input[1]);
+            close(pipe_drone[0]);
+            close(pipe_drone[1]);
+            close(pipe_obstacles[0]);
+            close(pipe_obstacles[1]);
+
+            char fd_str[16];
+            snprintf(fd_str, sizeof(fd_str), "%d", pipe_targets[1]);
+            
+            char slot_str[8];
+            snprintf(slot_str, sizeof(slot_str), "%d", HB_SLOT_TARGETS);
+
+            execlp("./build/bin/process_targets", "./build/bin/process_targets",
+                fd_str, HB_SHM_NAME, slot_str, (char*)NULL);
+
+            perror("execlp process_targets failed");
+            _exit(1);
+        } else {
+            log_message("BLACKBOARD", "Forked TARGETS process with PID=%d", pid_targets);
+        }
         
-        char slot_str[8]; //used for the watchdog processes
-        snprintf(slot_str, sizeof(slot_str), "%d", HB_SLOT_DRONE);
-        execlp("./build/bin/process_drone", "./build/bin/process_drone",
-            fd_str, HB_SHM_NAME, slot_str, (char *)NULL);
-        perror("execlp process_drone failed");
-        _exit(1);
+        // obstacles
+        pid_obstacles = fork();
+        if(pid_obstacles < 0){ //error
+            perror("fork failed for process_obstacles");
+            log_message("BLACKBOARD", "ERROR: fork failed for OBSTACLES");
+            g_stop = 1;
+            exit(1);
+        } else if(pid_obstacles == 0){ //child process of the obstacles process
+            //pipes not used
+            close(pipe_obstacles[0]); //use only pipe_obstacles[1] for the tick
+            close(pipe_input[0]);
+            close(pipe_input[1]);
+            close(pipe_drone[0]);
+            close(pipe_drone[1]);
+            close(pipe_targets[0]);
+            close(pipe_targets[1]);
+            char fd_str[16];
+            snprintf(fd_str, sizeof(fd_str), "%d", pipe_obstacles[1]);
+            
+            char slot_str[8]; //used for the watchdog processes
+            snprintf(slot_str, sizeof(slot_str), "%d", HB_SLOT_OBSTACLES);
+            execlp("./build/bin/process_obstacles", "./build/bin/process_obstacles",
+                fd_str, HB_SHM_NAME, slot_str, (char *)NULL);
+
+            perror("execlp process_obstacles failed");
+            _exit(1);
+        } else {
+            log_message("BLACKBOARD", "Forked OBSTACLES process with PID=%d", pid_obstacles);
+        }
+
+        if (g_stop) {
+            log_message("BLACKBOARD", "Fork failed, skipping main loop");
+            goto cleanup;
+        }
+
+        //debug
+        log_message("BLACKBOARD", "All processes forked successfully");
+
+        //watchdog
+        pid_watchdog = fork();
+        if (pid_watchdog < 0) {
+            perror("fork failed for watchdog");
+            log_message("BLACKBOARD", "ERROR: fork failed for WATCHDOG");
+            g_stop = 1;
+            exit(1);
+        } else if (pid_watchdog == 0) {
+            char timeout_str[16];
+            snprintf(timeout_str, sizeof(timeout_str), "%d", 2000); // 2s timeout
+
+            execlp("./build/bin/watchdog",  "./build/bin/watchdog",
+                HB_SHM_NAME, timeout_str, (char *)NULL);
+
+            perror("execlp watchdog failed");
+            _exit(1);
+        } 
+
     } else {
-        log_message("BLACKBOARD", "Forked DRONE process with PID=%d", pid_drone);
-    }
-
-    // target
-    pid_targets = fork();
-    if(pid_targets < 0){ //error
-        perror("fork failed for process_targets");
-        log_message("BLACKBOARD", "ERROR: fork failed for TARGETS");
-        g_stop = 1;
-        exit(1);
-    } else if (pid_targets == 0) { //child process of the targets process
-        //pipes not used
-        close(pipe_targets[0]); //use only pipe_targets[1] for the tick
-        close(pipe_input[0]);
-        close(pipe_input[1]);
-        close(pipe_drone[0]);
-        close(pipe_drone[1]);
-        close(pipe_obstacles[0]);
-        close(pipe_obstacles[1]);
-
-        char fd_str[16];
-        snprintf(fd_str, sizeof(fd_str), "%d", pipe_targets[1]);
-        
-        char slot_str[8];
-        snprintf(slot_str, sizeof(slot_str), "%d", HB_SLOT_TARGETS);
-
-        execlp("./build/bin/process_targets", "./build/bin/process_targets",
-            fd_str, HB_SHM_NAME, slot_str, (char*)NULL);
-
-        perror("execlp process_targets failed");
-        _exit(1);
-    } else {
-        log_message("BLACKBOARD", "Forked TARGETS process with PID=%d", pid_targets);
+        log_message("BLACKBOARD", "[NETWORK] Fork skipped (running in network mode)");
     }
     
-    // obstacles
-    pid_obstacles = fork();
-    if(pid_obstacles < 0){ //error
-        perror("fork failed for process_obstacles");
-        log_message("BLACKBOARD", "ERROR: fork failed for OBSTACLES");
-        g_stop = 1;
-        exit(1);
-    } else if(pid_obstacles == 0){ //child process of the obstacles process
-        //pipes not used
-        close(pipe_obstacles[0]); //use only pipe_obstacles[1] for the tick
-        close(pipe_input[0]);
-        close(pipe_input[1]);
-        close(pipe_drone[0]);
-        close(pipe_drone[1]);
-        close(pipe_targets[0]);
-        close(pipe_targets[1]);
-        char fd_str[16];
-        snprintf(fd_str, sizeof(fd_str), "%d", pipe_obstacles[1]);
-        
-        char slot_str[8]; //used for the watchdog processes
-        snprintf(slot_str, sizeof(slot_str), "%d", HB_SLOT_OBSTACLES);
-        execlp("./build/bin/process_obstacles", "./build/bin/process_obstacles",
-            fd_str, HB_SHM_NAME, slot_str, (char *)NULL);
-
-        perror("execlp process_obstacles failed");
-        _exit(1);
-    } else {
-        log_message("BLACKBOARD", "Forked OBSTACLES process with PID=%d", pid_obstacles);
-    }
-
-    if (g_stop) {
-        log_message("BLACKBOARD", "Fork failed, skipping main loop");
-        goto cleanup;
-    }
-
-    //debug
-    log_message("BLACKBOARD", "All processes forked successfully");
-
-    //watchdog
-    pid_watchdog = fork();
-    if (pid_watchdog < 0) {
-        perror("fork failed for watchdog");
-        log_message("BLACKBOARD", "ERROR: fork failed for WATCHDOG");
-        g_stop = 1;
-        exit(1);
-    } else if (pid_watchdog == 0) {
-        char timeout_str[16];
-        snprintf(timeout_str, sizeof(timeout_str), "%d", 2000); // 2s timeout
-
-        execlp("./build/bin/watchdog",  "./build/bin/watchdog",
-            HB_SHM_NAME, timeout_str, (char *)NULL);
-
-        perror("execlp watchdog failed");
-        _exit(1);
-    }
 
     //network threads - if abilited
     pthread_t server_thread = 0; 
