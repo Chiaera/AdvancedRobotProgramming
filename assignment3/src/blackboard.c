@@ -592,7 +592,68 @@ int main(int argc, char *argv[])
         } 
 
     } else {
-        log_message("BLACKBOARD", "[NETWORK] Fork skipped (running in network mode)");
+        //input
+        pid_input = fork();
+        if(pid_input < 0) { // error
+            perror("fork failed for process_input");
+            log_message("BLACKBOARD", "ERROR: fork failed for INPUT");
+            g_stop = 1;
+            exit(1);
+        } else if (pid_input == 0){ //child process of the input process
+            //pipes not used
+            close(pipe_input[0]); 
+            close(pipe_drone[0]);
+            close(pipe_drone[1]);
+            close(pipe_targets[0]);
+            close(pipe_targets[1]);
+            close(pipe_obstacles[0]);
+            close(pipe_obstacles[1]);
+
+            char fd_str[16];
+            snprintf(fd_str, sizeof(fd_str), "%d", pipe_input[1]);
+
+            char slot_str[8]; //used for the watchdog processes
+            snprintf(slot_str, sizeof(slot_str), "%d", HB_SLOT_INPUT);
+            execlp("konsole", "konsole", "-e", "./build/bin/process_input",
+                fd_str, HB_SHM_NAME, slot_str, (char *)NULL);
+            perror("execlp process_input failed");
+            _exit(1);
+        } else {
+            log_message("BLACKBOARD", "Forked INPUT process with PID=%d", pid_input);
+        }
+
+        // drone
+        pid_drone = fork();
+        if(pid_drone < 0){ //error
+            perror("fork failed for process_drone");
+            log_message("BLACKBOARD", "ERROR: fork failed for DRONE");
+            g_stop = 1;
+            exit(1);
+        } else if(pid_drone == 0){ //child process of the drone process
+            //pipes not used
+            close(pipe_drone[0]);
+            close(pipe_input[0]);
+            close(pipe_input[1]);
+            close(pipe_targets[0]);
+            close(pipe_targets[1]);
+            close(pipe_obstacles[0]);
+            close(pipe_obstacles[1]);
+
+            char fd_str[16];
+            snprintf(fd_str, sizeof(fd_str), "%d", pipe_drone[1]);
+            
+            char slot_str[8]; //used for the watchdog processes
+            snprintf(slot_str, sizeof(slot_str), "%d", HB_SLOT_DRONE);
+            execlp("./build/bin/process_drone", "./build/bin/process_drone",
+                fd_str, HB_SHM_NAME, slot_str, (char *)NULL);
+            perror("execlp process_drone failed");
+            _exit(1);
+        } else {
+            log_message("BLACKBOARD", "Forked DRONE process with PID=%d", pid_drone);
+        }
+
+        log_message("BLACKBOARD", "[NETWORK] Fork skipped for TARGETS, OBSTACLES and WATCHDOG processes");
+
     }
     
 

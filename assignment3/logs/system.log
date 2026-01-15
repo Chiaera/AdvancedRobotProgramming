@@ -1,0 +1,33 @@
+2026-01-15 21:42:04 [BLACKBOARD pid=4624][BOOT] Blackboard awakes
+2026-01-15 21:42:04 [BLACKBOARD pid=4624][BOOT] Config loaded: 100x30 world, 0 obstacles, 0 targets
+2026-01-15 21:42:04 [NETWORK pid=4624]Initialized: world=100x30, max_ext_obstacles=20
+2026-01-15 21:42:04 [BLACKBOARD pid=4624]Network state initialized (max external obstacles: 20)
+2026-01-15 21:42:04 [BLACKBOARD pid=4624][BOOT] Heartbeat semaphore initialized
+2026-01-15 21:42:04 [BLACKBOARD pid=4624][BOOT] Signal mask active
+2026-01-15 21:42:04 [BLACKBOARD pid=4624]Forked INPUT process with PID=4635
+2026-01-15 21:42:04 [BLACKBOARD pid=4624]Forked DRONE process with PID=4636
+2026-01-15 21:42:04 [BLACKBOARD pid=4624][NETWORK] Fork skipped for TARGETS, OBSTACLES and WATCHDOG processes
+2026-01-15 21:42:04 [BLACKBOARD pid=4624][NETWORK] Starting network threads
+2026-01-15 21:42:04 [BLACKBOARD pid=4624][NETWORK] Server thread started (port: 8888)
+2026-01-15 21:42:04 [NET_SERVER pid=4624]Server thread started on port 8888
+2026-01-15 21:42:04 [NET_SERVER pid=4624]Server listening on port 8888
+2026-01-15 21:42:04 [BLACKBOARD pid=4624][NETWORK] Client thread started (target: #)
+2026-01-15 21:42:04 [NET_SERVER pid=4624]Waiting for client connection...
+2026-01-15 21:42:04 [BLACKBOARD pid=4624][BOOT] Signal mask deactive
+2026-01-15 21:42:04 [NET_CLIENT pid=4624]Client thread started, target: #:8888
+2026-01-15 21:42:04 [NET_CLIENT pid=4624]Invalid address: #
+2026-01-15 21:42:04 [NET_CLIENT pid=4624]Failed to connect to server
+2026-01-15 21:42:04 [DRONE pid=4636]Drone process awakes (PID: 4636, slot: 2)
+2026-01-15 21:42:04 [INPUT pid=4651]Input process awakes (PID: 4651, slot: 1)
+2026-01-15 21:42:27 [INPUT pid=4651]f key pressed
+2026-01-15 21:42:27 [INPUT pid=4651]f key pressed
+2026-01-15 21:42:28 [INPUT pid=4651]f key pressed
+2026-01-15 21:42:29 [BLACKBOARD pid=4624]window closed: received SIGHUP
+2026-01-15 21:42:29 [BLACKBOARD pid=4624]Watchdog requested shutdown: send SIGUSR1 to blackboard
+2026-01-15 21:42:29 [BLACKBOARD pid=4624]window closed: received SIGHUP
+2026-01-15 21:42:29 [BLACKBOARD pid=4624]INPUT killed by signal 126
+2026-01-15 21:42:29 [BLACKBOARD pid=4624]DRONE killed by signal 15
+2026-01-15 21:42:29 [BLACKBOARD pid=4624]TARGETS killed by signal 15
+2026-01-15 21:42:29 [BLACKBOARD pid=4624]OBSTACLES killed by signal 15
+2026-01-15 21:42:29 [BLACKBOARD pid=4624]WATCHDOG killed by signal 15
+2026-01-15 21:42:29 [BLACKBOARD pid=4624]Blackboard shutdown
