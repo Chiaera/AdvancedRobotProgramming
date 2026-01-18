@@ -5,8 +5,9 @@ Multiple autonomous processes communicate asynchronously with a central server u
 
 ---
 ## System Architecture
-
-![Architecture](img/architecture.png)
+<div align="center">
+  <img src="img/architecture.png" width="70%">
+</div>
 
 
 ### Components details
@@ -160,8 +161,9 @@ Instead, the **shared component** are
    - draws drone, targets, obstacles
    - updates HUD (forces, velocity, position)
 
-![Screenshot](img/screenshot.png)
-
+<div align="center">
+  <img src="img/screenshot.png" width="100%">
+</div>
 
 <br>
 
@@ -216,7 +218,9 @@ Where:
 <br>
 
 ### Collision handling
-![Collision](img/collision.png)
+<div align="center">
+  <img src="img/collision.png" width="40%">
+</div>
 
 <br>
 
@@ -282,7 +286,9 @@ The client-server protocol is a sequential handshake followed by a cyclic exchan
    
 The protocol is implemented as **thread** so it can access directly to the `GameState` structure and both the **server thread** and **client thread** access the shared `NetworkState` structure.
 
-![Protocol](img/protocol.png)
+<div align="center">
+  <img src="img/protocol.png" width="60%">
+</div>
 
 To prevent race conditions with the Blackboard (which also reads/writes the same data), all accesses are protected using the principle of the mutual exclusion `MUTEX`:
 ```
@@ -304,12 +310,12 @@ Before it is necessary know the *IP address* of the device that will be used as 
    #   inet 127.0.0.1/8 scope host lo
    #   inet 192.168.1.23/24 brd 192.168.1.255 scope global dynamic noprefixroute wlp0s20f3
 ```
-
+Then modify the following values of `parameters.config` with the desired parameters:
 * NETWORK_ENABLED: enables (=1) or disables (=0) network mode
 * NETWORK_PORT: port on which the server listens(e.g., =8888)
 * NETWORK_CLIENT_TARGET: IP and port of the server to which the client connects (e.g., =192.168.1.23:8888)
 
-The **drone simulation** can be run as:
+Referring to the IP in the example, the **drone simulation** can be run as:
 |Mode |NETWORK_ENABLED |NETWORK_PORT |NETWORK_CLIENT_TARGET |
 |------------ |------------ |------------ |------------ |
 |server |1 |8888 |*(empty)* | 
