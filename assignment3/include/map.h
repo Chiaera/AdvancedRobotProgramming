@@ -130,6 +130,9 @@ typedef struct {
     //obstacles
     int num_obstacles;
     int obstacle_reloc; 
+
+    //network
+    int rotation; 
 } Config;
 
 //------------------------------------------------------------------------FUNCTIONS

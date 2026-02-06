@@ -37,6 +37,7 @@
 #include "world.h"
 #include "drone_physics.h"
 #include "logger.h"
+#include "network.h"
 
 #define LOG_PATH "logs/"
 
@@ -70,7 +71,6 @@ typedef enum { //use to define the game mode: soloplayer, server or client
     MODE_SERVER = 2,
     MODE_CLIENT = 3
 } GameMode;
-
 
 // read Config file
 static void load_config(const char *path, Config *cfg) {
@@ -116,6 +116,9 @@ static void load_config(const char *path, Config *cfg) {
 
             //obstacles
             else if (!strcmp(key, "NUM_OBSTACLES")) cfg->num_obstacles = atoi(value);
+
+            //network
+            else if (!strcmp(key, "ROTATION")) cfg->rotation = atoi(value);
         }
     }
 
@@ -242,6 +245,7 @@ int main(int argc, char *argv[])
 {  
     GameMode mode = MODE_SOLO; //default game mode
     int network = 0;
+    NetworkContext ctx;
 
     printf("Select the game mode:\n");
     printf("'1' for Solo-player\n");
@@ -340,6 +344,28 @@ int main(int argc, char *argv[])
     //initialize the variables of the gamestate struct --------------------------------
     GameState gs; 
     init_game(&gs, &cfg);
+
+    //-NETWORK---------------------------------------------------------------------------------
+    if (mode == MODE_SERVER) {
+    ctx.role = NET_SERVER;
+    ctx.port = DEFAULT_PORT;
+
+    // initializate socket
+    network_server_init(&ctx);
+
+    // handshake
+    if (handshake(&ctx) < 0) {
+        log_message("NETWORK", "Handshake failed");
+        goto cleanup;
+    }
+
+    // send dimension
+    if (send_window_size(&ctx, gs.world_width, gs.world_height) < 0) {
+        log_message("NETWORK", "Window size send failed");
+        goto cleanup;
+    }
+}
+
 
     // SHM ----------------------------------------------------------------------------------------------------------------------
     //create shared memory
@@ -759,6 +785,41 @@ int main(int argc, char *argv[])
             add_drone_dynamics(&gs); 
         }
 
+        //SERVER - network communication
+        if (mode == MODE_SERVER) {
+            ctx.rotation = cfg.rotation; //update the rotation parameter from the config file
+            if (cfg.rotation!=0 || cfg.rotation!=90 || cfg.rotation!=180 || cfg.rotation!=270){
+                log_message("BLACKBOARD", "WARNING: invalid rotation value in config, defaulting to 0");
+                ctx.rotation = 0;
+            }
+            
+            //conversion of drone position
+            int vx, vy; 
+            convert_to_virtual((int)gs.drone.x, (int)gs.drone.y, &vx, &vy, gs.world_width, gs.world_height, ctx.rotation);
+            
+            // send drone position to client
+            if (send_drone_position(&ctx, vx, vy) < 0) {
+                log_message("NETWORK", "ERROR: failed to send drone position");
+                break;
+            }
+
+            // receive obstacle position from client (virtual position)
+            int oxv, oyv;
+            if (receive_obstacle_position(&ctx, &oxv, &oyv) < 0) {
+                log_message("NETWORK", "ERROR: failed to receive obstacle position");
+                break;
+            }
+
+            //convert position from virtual to real
+            int ox, oy;
+            convert_from_virtual(oxv, oyv, &ox, &oy, gs.world_width, gs.world_height, ctx.rotation);
+
+            //update the obstacle position
+            gs.num_obstacles = 1;
+            gs.obstacles[0].x = ox;
+            gs.obstacles[0].y = oy;
+        }
+
         if(network==0){
             // TARGET - respawn
             if (FD_ISSET(pipe_targets[0], &set)) {
@@ -919,6 +980,13 @@ int main(int argc, char *argv[])
     munmap(hb, sizeof(*hb));
     close(hb_fd);
     shm_unlink(HB_SHM_NAME);
+
+    // close mode
+    if (mode == MODE_SERVER) { //SERVER
+        close(ctx.connfd);
+        close(ctx.sockfd);
+        log_message("NETWORK", "Server connection closed");
+    }
 
     log_message("BLACKBOARD", "Blackboard shutdown");
 

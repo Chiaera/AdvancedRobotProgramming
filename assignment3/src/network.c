@@ -3,6 +3,7 @@
     - receive message
     - send ack
     - receive ack
+    - coordinate conversion
 */
 
 #include "network.h"
@@ -26,8 +27,8 @@ int send_msg(int fd, const char *msg) {
 }
 
 //receive message
-int recv_msg(int fd, char *buffer, int maxlen) {
-    int i = 0;
+int recv_msg(int fd, char *buffer, size_t maxlen) {
+    size_t i = 0;
     char c;
 
     while (i < maxlen - 1) { //read leaving space for null terminator
@@ -56,4 +57,53 @@ int recv_ack(int fd, const char *expected) {
     if (strcmp(buffer, expected) != 0)
         return -1;
     return 0;
+}
+
+//-------------------------------------------------------- CONVERSION
+void convert_to_virtual(int x, int y, int *vx, int *vy, int W, int H, Rotation rot) {
+    switch (rot) {
+        case ROT_0:
+            *vx = x;
+            *vy = y;
+            break;
+
+        case ROT_90:
+            *vx = y;
+            *vy = W - 1 - x;
+            break;
+
+        case ROT_180:
+            *vx = W - 1 - x;
+            *vy = H - 1 - y;
+            break;
+
+        case ROT_270:
+            *vx = H - 1 - y;
+            *vy = x;
+            break;
+    }
+}
+
+void convert_from_virtual(int vx, int vy, int *x, int *y, int W, int H, Rotation rot) {
+    switch (rot) {
+        case ROT_0:
+            *x = vx;
+            *y = vy;
+            break;
+
+        case ROT_90:
+            *x = W - 1 - vy;
+            *y = vx;
+            break;
+
+        case ROT_180:
+            *x = W - 1 - vx;
+            *y = H - 1 - vy;
+            break;
+
+        case ROT_270:
+            *x = vy;
+            *y = H - 1 - vx;
+            break;
+    }
 }

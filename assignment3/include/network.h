@@ -44,7 +44,9 @@ int network_client_init(NetworkContext *ctx);
 void convert_to_virtual(int x, int y, int *vx, int *vy, int W, int H, Rotation rot);
 void convert_from_virtual(int vx, int vy, int *x, int *y, int W, int H, Rotation rot);
 
-//quit
-int network_quit(NetworkContext *ctx);
+//SERVER
+int send_window_size(NetworkContext *ctx, int width, int height);
+int send_drone_position(NetworkContext *ctx, int x, int y);
+int receive_obstacle_position(NetworkContext *ctx, int *x, int *y);
 
 #endif
