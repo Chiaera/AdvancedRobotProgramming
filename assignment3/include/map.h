@@ -83,12 +83,15 @@ typedef struct {
     //target
     int num_targets;
     Target targets[MAX_TARGETS];
+    int total_targets; 
+    int current_target_index;
 
     //score
     int score;
     double total_distance;
     int obstacles_hit;
     int targets_collected;
+    int total_target_collected;
     int fence_collision;
     int was_on_fence;
     int was_on_obstacles;

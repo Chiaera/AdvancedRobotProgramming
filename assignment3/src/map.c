@@ -82,6 +82,8 @@ void init_game(GameState *g, Config *cfg){
 
     // target
     g->num_targets = 0;
+    g->total_targets = cfg->num_targets;
+    g->current_target_index = 0; 
     for (int i = 0; i < MAX_TARGETS; i++) {
         g->targets[i].x = 0;
         g->targets[i].y = 0;
@@ -98,6 +100,7 @@ void init_game(GameState *g, Config *cfg){
     g->score = 0;
     g->obstacles_hit = 0;
     g->targets_collected = 0;
+    g->total_target_collected = 0;
     g->fence_collision = 0;
     g->was_on_fence = 0;
     g->was_on_obstacles = 0;
@@ -110,7 +113,7 @@ void render(Screen *s, GameState *g){
     werase(s->win); //dedine the border of the map
     box(s->win, 0, 0);
 
-    mvwprintw(s->win, 0, 2, "Score: %d", g->score); //print the score of the game
+    mvwprintw(s->win, 0, 2, "Score: %d | Targets: %d/%d", g->score, g->total_target_collected, g->total_targets); //print the score of the game
 
     double sx = 1.0, sy = 1.0; //resize the map
     if (g->world_width  > 1)
@@ -119,7 +122,8 @@ void render(Screen *s, GameState *g){
         sy = (double)(s->height - 2) / (g->world_height - 1);
 
     // targets need to be inside the map 
-    for (int i = 0; i < g->num_targets; i++) {
+    if (g->num_targets > 0 && g->current_target_index < g->num_targets) {
+        int i = g->current_target_index;
         int tx = 1 + (int)round(g->targets[i].x * sx);
         int ty = 1 + (int)round(g->targets[i].y * sy);
         if (tx < 1) tx = 1;
