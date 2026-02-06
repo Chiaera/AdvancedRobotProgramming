@@ -79,21 +79,16 @@ typedef struct {
     //obstacles
     int num_obstacles;
     Obstacle obstacles[MAX_OBSTACLES];
-    Obstacle external_obstacles[MAX_OBSTACLES]; //to store external obstacles from network
-    int num_external_obstacles;
 
     //target
     int num_targets;
     Target targets[MAX_TARGETS];
-    int total_targets; 
-    int current_target_index;
 
     //score
     int score;
     double total_distance;
     int obstacles_hit;
     int targets_collected;
-    int total_target_collected;
     int fence_collision;
     int was_on_fence;
     int was_on_obstacles;
@@ -132,12 +127,6 @@ typedef struct {
     //obstacles
     int num_obstacles;
     int obstacle_reloc; 
-
-    //nerwork
-    int network_enabled;           
-    int network_port;              
-    int network_max_external_obstacles; 
-    char network_client_target[256]; 
 } Config;
 
 //------------------------------------------------------------------------FUNCTIONS

@@ -97,33 +97,25 @@ void drone_target_collide(GameState *g){
     double r_pick = 1.5; //pickup radius (in "cells")
     double r2 = r_pick * r_pick;
 
-    //check if there are targets
-    if (g->num_targets <= 0 || g->current_target_index >= g->total_targets) {
-        return;
+    for (int i = 0; i < g->num_targets; i++) {
+        double dx = g->drone.x - (double)g->targets[i].x;
+        double dy = g->drone.y - (double)g->targets[i].y;
+        double d2 = dx*dx + dy*dy;
+
+        if(d2 < r2){ // drone is close enough to "collect" the target
+            g->targets_collected += 1;
+        
+            log_message("DRONE_PHYSICS", "Drone collects a target"); //write in the system.log
+
+            for (int j = i; j < g->num_targets - 1; j++) { //shift: remove the collected target from array
+                g->targets[j] = g->targets[j + 1];
+            }
+
+            //number of targets and indices remains for new the vector targets
+            g->num_targets--;
+            i--;
+        }        
     }
-
-    int i = g->current_target_index; // only check the current target
-    double dx = g->drone.x - (double)g->targets[i].x;
-    double dy = g->drone.y - (double)g->targets[i].y;
-    double d2 = dx*dx + dy*dy;
-
-    if(d2 < r2){ // drone is close enough to "collect" the target
-        g->targets_collected += 1;
-        g->total_target_collected += 1;
-
-        log_message("DRONE_PHYSICS", "Drone collects %d° target", g->current_target_index+1); //write in the system.log
-
-        /*for (int j = i; j < g->num_targets - 1; j++) { //shift: remove the collected target from array
-            g->targets[j] = g->targets[j + 1];
-        }*/
-
-        //prepare the next target
-        if (g->current_target_index < g->total_targets) { 
-            respawn_target(g, g->current_target_index); 
-        }
-
-        g->current_target_index++; //next target to collect
-    }        
 }
 
 
