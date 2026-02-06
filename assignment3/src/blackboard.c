@@ -1,4 +1,5 @@
 /* This file containts the world server:
+    - manage the mode of the game
     - initialize the struct fot the pipe messages
     - initialize the world variable with their value read from the config file
     - create the ncurses windows 
