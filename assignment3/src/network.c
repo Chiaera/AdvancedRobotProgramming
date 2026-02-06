@@ -30,13 +30,13 @@ int recv_msg(int fd, char *buffer, int maxlen) {
     int i = 0;
     char c;
 
-    while (i < maxlen - 1) { //leave space for null terminator
+    while (i < maxlen - 1) { //read leaving space for null terminator
         int n = read(fd, &c, 1);
-        if (n <= 0) return -1;
+        if(n < 0) return -1; //error
+        if (n == 0) return 1; //connection closed
         if (c == '\n') break;
         buffer[i++] = c;
     }
-
     buffer[i] = '\0'; //null terminate
     return 0;
 }

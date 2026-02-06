@@ -163,8 +163,6 @@ Instead, the **shared component** are
    - draws drone, targets, obstacles
    - updates HUD (forces, velocity, position)
 
-![Screenshot](img/screenshot.png)
-
 <div align="center">
   <img src="img/screenshot.png" width="100%">
 </div>
@@ -222,7 +220,6 @@ Where:
 <br>
 
 ### Collision handling
-![Collision](img/collision.png)
 <div align="center">
   <img src="img/collision.png" width="40%">
 </div>
@@ -291,7 +288,6 @@ The client-server protocol is a sequential handshake followed by a cyclic exchan
 
 The protocol is implemented as **thread** so it can access directly to the `GameState` structure and both the **server thread** and **client thread** access the shared `NetworkState` structure.
 
-![Protocol](img/protocol.png)
 <div align="center">
   <img src="img/protocol.png" width="60%">
 </div>

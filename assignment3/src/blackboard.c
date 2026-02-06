@@ -693,9 +693,11 @@ int main(int argc, char *argv[])
             break;
         }
 
-        sem_wait(&hb->mutex); //lock the heartbeat table
-        hb->entries[HB_SLOT_BLACKBOARD].last_seen_ms = now_ms();  //reflesh the slot (for the wathcdog) every iteration - it is indipendent from pipes
-        sem_post(&hb->mutex); //unlock the heartbeat table
+        if(network==0){ 
+            sem_wait(&hb->mutex); //lock the heartbeat table
+            hb->entries[HB_SLOT_BLACKBOARD].last_seen_ms = now_ms();  //reflesh the slot (for the wathcdog) every iteration - it is indipendent from pipes
+            sem_post(&hb->mutex); //unlock the heartbeat table
+        }
 
         FD_ZERO(&set);
         FD_SET(pipe_input[0], &set);
@@ -957,17 +959,17 @@ cleanup:
         close(pipe_targets[1]);
         close(pipe_obstacles[0]);
         close(pipe_obstacles[1]);
-    }
+    }  
     
     //cleanup shm
-    if (hb != MAP_FAILED && hb != NULL) { //if cleaunp before mmap
+    if (network == 0 && hb != MAP_FAILED && hb != NULL) { //if cleaunp before mmap
         sem_destroy(&hb->mutex);
         munmap(hb, sizeof(*hb));
     }
-    if (hb_fd >= 0) { //if cleaunp before hb
+    if (network == 0 && hb_fd >= 0) { //if cleaunp before hb
         close(hb_fd);
+        shm_unlink(HB_SHM_NAME);
     }
-    shm_unlink(HB_SHM_NAME);
 
     log_message("BLACKBOARD", "Blackboard shutdown");
     

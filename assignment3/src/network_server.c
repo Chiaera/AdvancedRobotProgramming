@@ -16,7 +16,6 @@
 #include <unistd.h>
 
 #include "network.h"
-#include "heartbeat.h"
 #include "logger.h"
 
 
@@ -74,7 +73,7 @@ int handshake(NetworkContext *ctx){
         log_message("NETWORK", "ERROR: handshake receive failed");
         return -1;
     }
-    if (strcmp(buffer, "ook") != 0) {
+    if (strcmp(buffer, "ook") != 0) { //check ack 'ook'
         log_message("NETWORK", "ERROR: unexpected handshake ack message: %s", buffer);
         return -1;
     }
@@ -100,7 +99,7 @@ int send_window_size(NetworkContext *ctx, int width, int height){
         log_message("NETWORK", "ERROR: window size ack receive failed");
         return -1;
     }
-    if (strncmp(buffer, "sok", 3) != 0) { //check ack
+    if (strncmp(buffer, "sok", 3) != 0) { //check 'sok' ack
         log_message("NETWORK", "ERROR: invalid window");
         return -1;
     }
@@ -126,7 +125,7 @@ int send_drone_position(NetworkContext *ctx, int x, int y){
         log_message("NETWORK", "ERROR: drone position ack receive failed");
         return -1;
     }
-    if (strncmp(buffer, "dok", 3) != 0) { //check ack
+    if (strncmp(buffer, "dok", 3) != 0) { //check 'dok' ack
         log_message("NETWORK", "ERROR: invalid drone position ack");
         return -1;
     }
@@ -165,19 +164,4 @@ int receive_obstacle_position(NetworkContext *ctx, int *x, int *y){
 
     log_message("NETWORK", "Obstacle position received successfully");
     return 0;
-}
-
-//quit (quit -> qok)
-int handle_quit(NetworkContext *ctx) {
-    char buffer[BUFFER_SIZE];
-
-    if (recv_msg(ctx->connfd, buffer, BUFFER_SIZE) < 0)
-        return -1;
-
-    if (strcmp(buffer, "quit") == 0) { //check quit message
-        send_ack(ctx->connfd, "qok");
-        return 1;
-    }
-
-    return 0; //not quit
 }

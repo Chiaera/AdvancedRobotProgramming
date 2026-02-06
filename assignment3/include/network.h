@@ -21,7 +21,7 @@ typedef enum {//rotation for virtual coordinate system
 
 typedef struct { //network info
     NetworkRole role;
-    int sockfd; //listening socket for server, connected socket for client
+    int sockfd;
     int connfd; //server
     char server_ip[64]; //client
     int port;
