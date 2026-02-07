@@ -105,5 +105,8 @@ void convert_from_virtual(int vx, int vy, int *x, int *y, int W, int H, Rotation
             *x = vy;
             *y = H - 1 - vx;
             break;
+
+        default:
+            rot = ROT_0;
     }
 }

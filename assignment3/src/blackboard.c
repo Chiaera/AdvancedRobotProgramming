@@ -874,19 +874,11 @@ int main(int argc, char *argv[])
                 send_quit(&ctx);
                 break;
             }
-
-            ctx.rotation = cfg.rotation; //update the rotation parameter from the config file
-            if (cfg.rotation != 0 && cfg.rotation != 90 && cfg.rotation != 180 && cfg.rotation != 270) { //check angles
-                log_message("BLACKBOARD", "WARNING: invalid rotation value %d, defaulting to 0", cfg.rotation);
-                ctx.rotation = 0;
-            } else {
-                ctx.rotation = cfg.rotation; 
-            }
             
             // DRONE
             //conversion of drone position
             int vx, vy; 
-            convert_to_virtual((int)gs.drone.x, (int)gs.drone.y, &vx, &vy, gs.world_width, gs.world_height, ctx.rotation);
+            convert_to_virtual(gs.drone.x, gs.drone.y, &vx, &vy, gs.world_width, gs.world_height, ctx.rotation);
             //send drone position to client
             if (send_drone_position(&ctx, vx, vy) < 0) {
                 log_message("NETWORK", "ERROR: failed to send drone position");
