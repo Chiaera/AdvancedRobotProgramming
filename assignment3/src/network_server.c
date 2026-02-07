@@ -102,7 +102,7 @@ int  server_handshake(NetworkContext *ctx){
         return -1;
     }
     if (strcmp(buffer, "ook") != 0) { //check ack 'ook'
-        log_message("NETWORK", "[SERVER] ERROR: unexpected handshake ack message: %s", buffer);
+        log_message("NETWORK", "[SERVER] ERROR: invalid handshake ack");
         return -1;
     }
 

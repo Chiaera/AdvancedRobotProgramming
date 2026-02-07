@@ -86,7 +86,7 @@ int client_handshake(NetworkContext *ctx){
         return -1;
     }
     if (strcmp(buffer, "ok") != 0) { //check 'ok'
-        log_message("NETWORK", "[CLIENT] ERROR: unexpected handshake '%s'", buffer);
+        log_message("NETWORK", "[CLIENT] ERROR: invalid handshake ack");
         return -1;
     }
     log_message("NETWORK", "[CLIENT] Received handshake: %s", buffer);
