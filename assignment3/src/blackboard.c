@@ -350,9 +350,11 @@ int main(int argc, char *argv[])
 
             echo();
             getnstr(ip_address, 63);
+            log_message("BLACKBOARD", "[CLIENT] ip addres insert: %s", ip_address);
             noecho();
 
             if (strcmp(ip_address, "s") == 0 || strcmp(ip_address, "S") == 0) {
+                network = 0;
                 mode = MODE_SOLO;
                 break;
             }
@@ -405,19 +407,21 @@ int main(int argc, char *argv[])
 
         // handshake
         if (server_handshake(&ctx) < 0) {
-            log_message("NETWORK", "Handshake failed");
+            log_message("BLACKBOARD", "[SERVER] Handshake failed");
             goto cleanup;
         }
 
         // send dimension
         if (send_window_size(&ctx, gs.world_width, gs.world_height) < 0) {
-            log_message("NETWORK", "Window size send failed");
+            log_message("BLACKBOARD", "[SERVER] Window size send failed");
             goto cleanup;
         }
     }
 
     //initializate CLIENT
     if (mode == MODE_CLIENT) {
+
+        ctx.port = DEFAULT_PORT; 
 
         network_client_init(&ctx);
 
@@ -489,10 +493,17 @@ int main(int argc, char *argv[])
     sigaction(SIGINT, &sa_int, NULL);
 
     //handler to SIGHUP (window close)
-    struct sigaction sa_hup;   //handler to sighup (window close)
-    memset(&sa_hup, 0, sizeof(sa_hup));
-    sa_hup.sa_handler = on_sighup;
-    sigaction(SIGHUP, &sa_hup, NULL);
+    if(network == 0){
+        struct sigaction sa_hup;   //handler to sighup (window close)
+        memset(&sa_hup, 0, sizeof(sa_hup));
+        sa_hup.sa_handler = on_sighup;
+        sigaction(SIGHUP, &sa_hup, NULL);
+    } else {
+        struct sigaction sa_winch;
+        memset(&sa_winch, 0, sizeof(sa_winch));
+        sa_winch.sa_handler = SIG_IGN;
+        sigaction(SIGWINCH, &sa_winch, NULL);
+    }
 
     // FORK ------------------------------------------------------------------------------------------------------------------------
 
