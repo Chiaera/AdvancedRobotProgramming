@@ -32,8 +32,8 @@ BLACKBOARD_SRC := $(SRC_DIR)/blackboard.c \
                   $(SRC_DIR)/world.c \
                   $(SRC_DIR)/drone_physics.c \
                   $(SRC_DIR)/network.c \
-                  $(SRC_DIR)/network_server.c
-			  
+                  $(SRC_DIR)/network_server.c \
+				  $(SRC_DIR)/network_client.c			  
 INPUT_SRC := $(SRC_DIR)/process_input.c
 DRONE_SRC := $(SRC_DIR)/process_drone.c
 OBSTACLES_SRC := $(SRC_DIR)/process_obstacles.c

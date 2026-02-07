@@ -255,23 +255,57 @@ int main(int argc, char *argv[])
     scanf("%d", &chosenMODE);
 
     switch (chosenMODE) {
-        case 1: 
+        case 1: //solo-player
             mode = MODE_SOLO; 
             log_message("BLACKBOARD", "[BOOT] Session started in SOLO-PLAYER mode");
             break;
-        case 2: 
+        case 2: //server
             mode = MODE_SERVER; 
             log_message("BLACKBOARD", "[BOOT] Session started in SERVER mode");
             network = 1; //enable network features 
             break;
-        case 3: 
-            mode = MODE_CLIENT; 
+        case 3:  // CLIENT
+            mode = MODE_CLIENT;
             log_message("BLACKBOARD", "[BOOT] Session started in CLIENT mode");
-            network = 1; //enable network features
-            break;
-        default:
-            printf("Invalid selection, automatic start as solo-player.\n");
+            network = 1;
+
+            char ip_address[64];
+
+            while (1){
+                clear();
+                mvprintw(5, 2, "CLIENT MODE");
+                mvprintw(7, 2, "Insert server IP address:");
+                mvprintw(8, 2, "(Press 's' to switch to SOLO-PLAYER)");
+                mvprintw(10, 2, "> ");
+                refresh();
+
+                echo();
+                getnstr(ip_address, 63);
+                noecho();
+
+                //switch to solo-player
+                if (strcmp(ip_address, "s") == 0 || strcmp(ip_address, "S") == 0) {
+                    mode = MODE_SOLO;
+                    log_message("BLACKBOARD", "[BOOT] Switched to SOLO-PLAYER mode");
+                    break;
+                }
+
+                //validate IP length
+                if (strlen(ip_address) < 7 || strlen(ip_address) > 63) {
+                    mvprintw(12, 2, "Invalid IP. Press any key to retry.");
+                    getch();
+                    continue;
+                }
+
+                //save the IP address
+                strcpy(ctx.server_ip, ip_address);
+                log_message("BLACKBOARD", "[BOOT] Attempting to connect to server at %s", ip_address);
+                break;
+            }
+
+        break;
     }
+
 
     if (argc == 1) {
         printf("--help to see the help commands\n");
@@ -346,26 +380,45 @@ int main(int argc, char *argv[])
     init_game(&gs, &cfg);
 
     //-NETWORK---------------------------------------------------------------------------------
-    if (mode == MODE_SERVER) {
-    ctx.role = NET_SERVER;
-    ctx.port = DEFAULT_PORT;
+    //initializate SERVER
+    if (mode == MODE_SERVER) { 
+        ctx.role = NET_SERVER;
+        ctx.port = DEFAULT_PORT;
 
-    // initializate socket
-    network_server_init(&ctx);
+        // initializate socket
+        network_server_init(&ctx);
 
-    // handshake
-    if (handshake(&ctx) < 0) {
-        log_message("NETWORK", "Handshake failed");
-        goto cleanup;
+        // handshake
+        if (server_handshake(&ctx) < 0) {
+            log_message("NETWORK", "Handshake failed");
+            goto cleanup;
+        }
+
+        // send dimension
+        if (send_window_size(&ctx, gs.world_width, gs.world_height) < 0) {
+            log_message("NETWORK", "Window size send failed");
+            goto cleanup;
+        }
     }
 
-    // send dimension
-    if (send_window_size(&ctx, gs.world_width, gs.world_height) < 0) {
-        log_message("NETWORK", "Window size send failed");
-        goto cleanup;
-    }
-}
+    //initializate CLIENT
+    if (mode == MODE_CLIENT) {
 
+        network_client_init(&ctx);
+
+        if (client_handshake(&ctx) < 0) {
+            log_message("BLACKBOARD", "[CLIENT] ERROR: handshake failed");
+            return 1;
+        }
+
+        int W, H;
+        if (receive_window_size(&ctx, &W, &H) < 0) {
+            log_message("BLACKBOARD", "[CLIENT] ERROR: failed to receive window size");
+            return 1;
+        }
+        gs.world_width = W;
+        gs.world_height = H;
+    }
 
     // SHM ----------------------------------------------------------------------------------------------------------------------
     //create shared memory
@@ -818,6 +871,40 @@ int main(int argc, char *argv[])
             gs.num_obstacles = 1;
             gs.obstacles[0].x = ox;
             gs.obstacles[0].y = oy;
+        }
+
+        // CLIENT - network communication
+        if (mode == MODE_CLIENT) {
+            //receive drone position from server (virtual position)
+            int vx, vy;
+            if (receive_drone_position(&ctx, &vx, &vy) < 0) {
+                log_message("NETWORK", "[CLIENT] ERROR: failed to receive drone position");
+                break;
+            }
+
+            //convert position from virtual to real
+            int rx, ry;
+            convert_from_virtual(vx, vy, &rx, &ry, gs.world_width, gs.world_height, ctx.rotation);
+
+            //update the obstacle position
+            gs.num_obstacles = 1;
+            gs.obstacles[0].x = rx;
+            gs.obstacles[0].y = ry;
+
+            //send local obstacle (client drone)
+            int lx = (int)gs.drone.x;
+            int ly = (int)gs.drone.y;
+
+            int lvx, lvy;
+            convert_to_virtual(lx, ly, &lvx, &lvy, gs.world_width, gs.world_height, ctx.rotation);
+
+            if (send_obstacle_position(&ctx, lvx, lvy) < 0) {
+                log_message("NETWORK", "[CLIENT] ERROR: failed to send obstacle position");
+                break;
+            }
+
+            //draw map
+            render(&screen, &gs);
         }
 
         if(network==0){

@@ -29,11 +29,13 @@ typedef struct { //network info
 } NetworkContext;
 
 //------------------------------------------------------------------------FUNCTIONS
+//comunication
 int send_msg(int sockfd, const char *msg);
 int recv_msg(int sockfd, char *buffer, size_t buf_size);
 int send_ack(int sockfd, const char *ack);
 int recv_ack(int sockfd, const char *expected_ack);
-int handshake(NetworkContext *ctx);
+int server_handshake(NetworkContext *ctx);
+int client_handshake(NetworkContext *ctx);
 
 //socket setup
 int network_server_init(NetworkContext *ctx);
@@ -48,5 +50,14 @@ void convert_from_virtual(int vx, int vy, int *x, int *y, int W, int H, Rotation
 int send_window_size(NetworkContext *ctx, int width, int height);
 int send_drone_position(NetworkContext *ctx, int x, int y);
 int receive_obstacle_position(NetworkContext *ctx, int *x, int *y);
+
+// CLIENT
+int receive_window_size(NetworkContext *ctx, int *W, int *H);
+int receive_drone_position(NetworkContext *ctx, int *x, int *y);
+int send_obstacle_position(NetworkContext *ctx, int x, int y);
+
+//quit
+int send_quit(NetworkContext *ctx);
+int receive_quit(NetworkContext *ctx);
 
 #endif

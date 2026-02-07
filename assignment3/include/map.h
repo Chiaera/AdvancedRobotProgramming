@@ -97,7 +97,6 @@ typedef struct {
     int was_on_obstacles;
     int obstacles_hit_tot;
     int fence_collision_tot;
-
 } GameState;
 
 
