@@ -134,21 +134,13 @@ int receive_window_size(NetworkContext *ctx, int *W, int *H) {
 int receive_drone_position(NetworkContext *ctx, int *x, int *y){
     char buffer[BUFFER_SIZE];
 
-    //receive message 'drone x y'
+    //receive message 'x y'
     if (recv_msg(ctx->connfd, buffer, BUFFER_SIZE) < 0) {
         log_message("NETWORK", "[CLIENT] ERROR: failed to receive drone position");
         return -1;
     }
-    if (strcmp(buffer, "drone") != 0) {
-        log_message("NETWORK", "[CLIENT] ERROR: invalid message ");
-        return -1;
-    }
 
     //parse x and y
-    if (recv_msg(ctx->connfd, buffer, BUFFER_SIZE) < 0){
-        log_message("NETWORK", "[CLIENT] ERROR: failed to receive drone position coordinates");
-        return -1;
-    }
     if (sscanf(buffer, "%d %d", x, y) != 2){
         log_message("NETWORK", "[CLIENT] ERROR: invalid drone position coordinates");
         return -1;
@@ -169,12 +161,6 @@ int receive_drone_position(NetworkContext *ctx, int *x, int *y){
 int send_obstacle_position(NetworkContext *ctx, int x, int y){
     char buffer[BUFFER_SIZE];
 
-    //send message 'obst'
-    if (send_msg(ctx->connfd, "obst") < 0) {
-        log_message("NETWORK", "[CLIENT] ERROR: failed to send obstacle message");
-        return -1;
-    }
-
     //send message obstacle position 'x y' 
     snprintf(buffer, BUFFER_SIZE, "%d %d", x, y);
     if (send_msg(ctx->connfd, buffer) < 0) {
@@ -186,7 +172,7 @@ int send_obstacle_position(NetworkContext *ctx, int x, int y){
         log_message("NETWORK", "[CLIENT] ERROR: failed to receive obstacle position ack");
         return -1;
     }
-    if (strcmp(buffer, "pok") != 0) {
+    if (strcmp(buffer, "pok") != 0) { //check 'pok'
         log_message("NETWORK", "[CLIENT] ERROR: invalid obstacle position ack");
         return -1;
     }
@@ -200,16 +186,6 @@ int send_obstacle_position(NetworkContext *ctx, int x, int y){
 //send quit
 int receive_quit(NetworkContext *ctx) {
     char buffer[BUFFER_SIZE];
-
-    //receive message 'quit'
-    if (recv_msg(ctx->connfd, buffer, BUFFER_SIZE) < 0) {
-        log_message("NETWORK", "[CLIENT] ERROR: failed to receive quit message");
-        return -1;
-    }
-    if (strcmp(buffer, "q") != 0) {
-        log_message("NETWORK", "[CLIENT] ERROR: invalid quit message");
-        return -1;
-    }
 
     //send ack 'qok'
     if (send_msg(ctx->connfd, "qok") < 0) {

@@ -366,6 +366,9 @@ int main(int argc, char *argv[])
             }
 
             strcpy(ctx.server_ip, ip_address);
+
+            clear();
+            refresh();
             break;
         }
     }
@@ -914,6 +917,7 @@ int main(int argc, char *argv[])
                 break;
             }
 
+            //manage message
             if (strcmp(buffer, "q") == 0) { //QUIT
                 if (receive_quit(&ctx) < 0) log_message("NETWORK", "[CLIENT] ERROR: quit failed");
                 break;
@@ -932,21 +936,12 @@ int main(int argc, char *argv[])
                     int rx, ry;
                     convert_from_virtual(vx, vy, &rx, &ry, gs.world_width, gs.world_height, ctx.rotation);
 
-                    //update local drone position
-                    gs.drone.x = rx;
-                    gs.drone.y = ry;
+                    //update obstacle position
+                    gs.num_obstacles = 1;
+                    gs.obstacles[0].x = rx;
+                    gs.obstacles[0].y = ry;
 
-                    //drone -> server obstacle
-                    int ox = (int)gs.drone.x;
-                    int oy = (int)gs.drone.y;
-
-                    //send obstacle position
-                    if (send_obstacle_position(&ctx, ox, oy) < 0) { 
-                        log_message("NETWORK", "[CLIENT] ERROR: failed to send obstacle position"); 
-                        break; 
-                    }
-                    log_message("NETWORK", "[CLIENT] Sent obstacle at virtual (%d,%d) -> real (%d,%d)", vx, vy, rx, ry);
-                    break;
+                    log_message("NETWORK", "[CLIENT] Updated server drone at (%d,%d)", rx, ry);
                 
                 case MSG_OBST: //OBSTACLE
                     //client position as server obstacle
@@ -958,22 +953,12 @@ int main(int argc, char *argv[])
                     convert_to_virtual(dx, dy, &dvx, &dvy, gs.world_width, gs.world_height, ctx.rotation);
                     
                     //send coordinate
-                    snprintf(buffer, BUFFER_SIZE, "%d %d", dvx, dvy);
-                    if (send_msg(ctx.connfd, buffer) < 0) {
-                        log_message("NETWORK", "[CLIENT] ERROR: failed to send obstacle position");
+                    if (send_obstacle_position(&ctx, dvx, dvy) < 0) {
+                        log_message("NETWORK", "[CLIENT] ERROR: failed to send obstacle");
                         break;
-                    }
-                    
-                    //receive ack 'pok'
-                    if (recv_msg(ctx.connfd, buffer, BUFFER_SIZE) < 0) {
-                        log_message("NETWORK", "[CLIENT] ERROR: failed to receive obstacle ack");
-                        break;
-                    }
-                    if (strcmp(buffer, "pok") != 0) {
-                        log_message("NETWORK", "[CLIENT] invalid obstacle ack");
                     }
 
-                    log_message("NETWORK", "[CLIENT] Sent obstacle at real (%d,%d) -> virtual (%d,%d)", dx, dy, dvx, dvy);
+                    log_message("NETWORK", "[CLIENT] Sent client position (%d,%d)", dvx, dvy);
                     break;
                     
                 case MSG_UNKNOWN: //invalid type
