@@ -78,22 +78,6 @@ typedef enum { //use for server-client type messages
     MSG_UNKNOWN
 } MsgType;
 
-WINDOW *show_waiting_client_window(void) { //for the server mode
-    int h = 5;
-    int w = 30;
-    int y = (LINES - h) / 2;
-    int x = (COLS - w) / 2;
-    
-    WINDOW *win = newwin(h, w, y, x);
-    box(win, 0, 0);
-
-    wattron(win, A_BOLD);
-    mvwprintw(win, 2, (w - 23) / 2, "Waiting for a client...");
-    wattroff(win, A_BOLD);
-
-    wrefresh(win);
-    return win;
-}
 
 // read Config file
 static void load_config(const char *path, Config *cfg) {
@@ -239,7 +223,6 @@ int print_final_win(GameState *gs, pid_t pid_watchdog) {
     refresh();
 
     //open final statistics window
-    
     WINDOW *final_win = newwin(10, 50, LINES/2 - 5, COLS/2 - 25); 
     box(final_win, 0, 0);
 
@@ -450,20 +433,21 @@ int main(int argc, char *argv[])
     //-NETWORK---------------------------------------------------------------------------------
     //initializate SERVER
     if (mode == MODE_SERVER) { 
-        //create window for waiting client
-        WINDOW *wait_win = NULL;
-        wait_win = show_waiting_client_window();
+        //window area
+        clear();
+        attron(A_BOLD | COLOR_PAIR(1));
+        mvprintw(LINES/2, (COLS - 25)/2, "Waiting for a client...");
+        attroff(A_BOLD | COLOR_PAIR(1));
+        refresh();
 
         ctx.role = NET_SERVER;
         ctx.port = DEFAULT_PORT;
 
         // initializate socket
         network_server_init(&ctx);
-        if (wait_win) {
-            delwin(wait_win);
-            clear();
-            refresh();
-        }
+        
+        clear();
+        refresh();
 
         // handshake
         if (server_handshake(&ctx) < 0) {
