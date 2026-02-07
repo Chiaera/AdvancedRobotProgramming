@@ -904,6 +904,9 @@ int main(int argc, char *argv[])
             gs.obstacles[0].x = ox;
             gs.obstacles[0].y = oy;
 
+            log_message("NETWORK", "[SERVER DEBUG] Client drone at virtual (%d,%d) to real (%d,%d)", oxv, oyv, ox, oy); 
+            log_message("NETWORK", "[SERVER DEBUG] My drone is at (%d,%d)", (int)gs.drone.x, (int)gs.drone.y);
+
             log_message("NETWORK", "[SERVER] Updated obstacle at real (%d,%d)", ox, oy);
         }
 
@@ -920,6 +923,7 @@ int main(int argc, char *argv[])
             //manage message
             if (strcmp(buffer, "q") == 0) { //QUIT
                 if (receive_quit(&ctx) < 0) log_message("NETWORK", "[CLIENT] ERROR: quit failed");
+                g_stop = 1;
                 break;
             } 
             MsgType typeMsg = parse_message_type(buffer);
@@ -949,10 +953,13 @@ int main(int argc, char *argv[])
                     int dx = (int)gs.drone.x;
                     int dy = (int)gs.drone.y;
 
+                    log_message("NETWORK", "[CLIENT DEBUG] My drone is at (%d,%d)", dx, dy);
+
                     //conversion from real to virtual
                     int dvx, dvy;
                     convert_to_virtual(dx, dy, &dvx, &dvy, gs.world_width, gs.world_height, ctx.rotation);
-                    
+                    log_message("NETWORK", "[CLIENT DEBUG] Sending virtual (%d,%d)", dvx, dvy);
+
                     //send coordinate
                     if (send_obstacle_position(&ctx, dvx, dvy) < 0) {
                         log_message("NETWORK", "[CLIENT] ERROR: failed to send obstacle");
