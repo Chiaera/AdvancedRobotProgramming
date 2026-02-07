@@ -851,9 +851,11 @@ int main(int argc, char *argv[])
             }
 
             ctx.rotation = cfg.rotation; //update the rotation parameter from the config file
-            if (cfg.rotation!=0 || cfg.rotation!=90 || cfg.rotation!=180 || cfg.rotation!=270){
-                log_message("BLACKBOARD", "WARNING: invalid rotation value in config, defaulting to 0");
+            if (cfg.rotation != 0 && cfg.rotation != 90 && cfg.rotation != 180 && cfg.rotation != 270) { //check angles
+                log_message("BLACKBOARD", "WARNING: invalid rotation value %d, defaulting to 0", cfg.rotation);
                 ctx.rotation = 0;
+            } else {
+                ctx.rotation = cfg.rotation; 
             }
             
             //conversion of drone position
@@ -885,57 +887,84 @@ int main(int argc, char *argv[])
 
         // CLIENT - network communication
         if (mode == MODE_CLIENT) {
+            char buffer[BUFFER_SIZE];
             char header[BUFFER_SIZE];
 
             //read header
             if (recv_msg(ctx.connfd, header, BUFFER_SIZE) < 0) {
-                log_message("NETWORK", "[CLIENT] ERROR: failed to receive header"); 
-                break; 
+                log_message("NETWORK", "[CLIENT] ERROR: failed to receive header");
+                break;
             }
 
-            //handle message based on header
             if (strcmp(header, "q") == 0) { //QUIT
                 log_message("NETWORK", "[CLIENT] Quit received from server");
-                receive_quit(&ctx);
+                send_msg(ctx.connfd, "qok");
                 break;
-            } else if(strcmp(header, "drone") == 0) { //DRONE
-                //receive drone position from server (virtual position)
+                
+            } else if (strcmp(header, "drone") == 0) { //DRONE
+                //receive drone coordinate
+                if (recv_msg(ctx.connfd, buffer, BUFFER_SIZE) < 0) {
+                    log_message("NETWORK", "[CLIENT] ERROR: failed to receive drone coordinates");
+                    break;
+                }
+                
                 int vx, vy;
-                if (receive_drone_position(&ctx, &vx, &vy) < 0) {
-                    log_message("NETWORK", "[CLIENT] ERROR: failed to receive drone position");
+                if (sscanf(buffer, "%d %d", &vx, &vy) != 2) {
+                    log_message("NETWORK", "[CLIENT] ERROR: invalid drone coordinates");
+                    break;
+                }
+                
+                //send ack 'dok'
+                if (send_msg(ctx.connfd, "dok") < 0) {
+                    log_message("NETWORK", "[CLIENT] ERROR: failed to send drone ack");
                     break;
                 }
 
-                //convert position from virtual to real
+                //conversion from real to virtual
                 int rx, ry;
                 convert_from_virtual(vx, vy, &rx, &ry, gs.world_width, gs.world_height, ctx.rotation);
 
-                //update the obstacle position
+                //update obstacle (server drone)
                 gs.num_obstacles = 1;
                 gs.obstacles[0].x = rx;
                 gs.obstacles[0].y = ry;
 
-                //send local obstacle (client drone)
+                log_message("NETWORK", "[CLIENT] Received drone at virtual (%d,%d) -> real (%d,%d)", vx, vy, rx, ry);
+                
+            } else if (strcmp(header, "obst") == 0) { //OBSTACLE
+                //client position as server obstacle
                 int lx = (int)gs.drone.x;
                 int ly = (int)gs.drone.y;
 
+                //conversion from real to virtual
                 int lvx, lvy;
                 convert_to_virtual(lx, ly, &lvx, &lvy, gs.world_width, gs.world_height, ctx.rotation);
-
-                if (send_obstacle_position(&ctx, lvx, lvy) < 0) {
+                
+                //send coordinate
+                snprintf(buffer, BUFFER_SIZE, "%d %d", lvx, lvy);
+                if (send_msg(ctx.connfd, buffer) < 0) {
                     log_message("NETWORK", "[CLIENT] ERROR: failed to send obstacle position");
                     break;
                 }
+                
+                //receive ack 'pok'
+                if (recv_msg(ctx.connfd, buffer, BUFFER_SIZE) < 0) {
+                    log_message("NETWORK", "[CLIENT] ERROR: failed to receive obstacle ack");
+                    break;
+                }
+                if (strcmp(buffer, "pok") != 0) {
+                    log_message("NETWORK", "[CLIENT] invalid obstacle ack");
+                }
 
-                //draw map
-                render(&screen, &gs);
-                continue;
+                log_message("NETWORK", "[CLIENT] Sent obstacle at real (%d,%d) -> virtual (%d,%d)", lx, ly, lvx, lvy);
+                
             } else {
                 log_message("NETWORK", "[CLIENT] ERROR: unexpected header '%s'", header);
                 break;
             }
 
-            
+            //draw map
+            render(&screen, &gs);
         }
 
         if(network==0){
