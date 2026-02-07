@@ -185,8 +185,6 @@ int send_obstacle_position(NetworkContext *ctx, int x, int y){
 
 //send quit
 int receive_quit(NetworkContext *ctx) {
-    char buffer[BUFFER_SIZE];
-
     //send ack 'qok'
     if (send_msg(ctx->connfd, "qok") < 0) {
         log_message("NETWORK", "[CLIENT] ERROR: failed to send quit ack");

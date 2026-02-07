@@ -942,6 +942,7 @@ int main(int argc, char *argv[])
                     gs.obstacles[0].y = ry;
 
                     log_message("NETWORK", "[CLIENT] Updated server drone at (%d,%d)", rx, ry);
+                    break;
                 
                 case MSG_OBST: //OBSTACLE
                     //client position as server obstacle
