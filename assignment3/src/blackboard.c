@@ -78,6 +78,22 @@ typedef enum { //use for server-client type messages
     MSG_UNKNOWN
 } MsgType;
 
+WINDOW *show_waiting_client_window(void) { //for the server mode
+    int h = 5;
+    int w = 30;
+    int y = (LINES - h) / 2;
+    int x = (COLS - w) / 2;
+    
+    WINDOW *win = newwin(h, w, y, x);
+    box(win, 0, 0);
+
+    wattron(win, A_BOLD);
+    mvwprintw(win, 2, (w - 23) / 2, "Waiting for a client...");
+    wattroff(win, A_BOLD);
+
+    wrefresh(win);
+    return win;
+}
 
 // read Config file
 static void load_config(const char *path, Config *cfg) {
@@ -223,6 +239,7 @@ int print_final_win(GameState *gs, pid_t pid_watchdog) {
     refresh();
 
     //open final statistics window
+    
     WINDOW *final_win = newwin(10, 50, LINES/2 - 5, COLS/2 - 25); 
     box(final_win, 0, 0);
 
@@ -259,37 +276,60 @@ MsgType parse_message_type(const char *s) {
 int main(int argc, char *argv[])
 {  
     GameMode mode = MODE_SOLO; //default game mode
-    int network = 0;
     NetworkContext ctx;
+    int network=0;
     memset(&ctx, 0, sizeof(ctx));
-
-    printf("Select the game mode:\n");
-    printf("> '1' for Solo-player\n");
-    printf("> '2' for Server\n");
-    printf("> '3' for Client\n");
+    
+    printf("Select the Network mode:\n");
+    printf("> '1' network disabled | SOLO-PLAYER modality\n");
+    printf("> '2' network enabled | SERVER or CLIENT modality\n");
     printf("\n> ");
-    int chosenMODE;
-    scanf("%d", &chosenMODE);
+    
+    int ChosenNetwork=0;
+    scanf("%d", &ChosenNetwork);
 
-    switch (chosenMODE) {
-        case 1: //solo-player
+    switch (ChosenNetwork) {
+        case 1: //disabled -> solo-player
+            network = 0;
             mode = MODE_SOLO; 
             log_message("BLACKBOARD", "[BOOT] Session started in SOLO-PLAYER mode");
             break;
-        case 2: //server
-            mode = MODE_SERVER; 
+        case 2: //enable 
             network = 1; //enable network features 
-            log_message("BLACKBOARD", "[BOOT] Session started in SERVER mode");
-            break;
-        case 3:  // CLIENT
-            mode = MODE_CLIENT;
-            network = 1;
-            log_message("BLACKBOARD", "[BOOT] Session started in CLIENT mode");
             break;
         default:
+            network = 0;
             mode = MODE_SOLO; 
-            log_message("BLACKBOARD", "[BOOT] Invalid input: Session started automatically in SOLO-PLAYER mode");
+            log_message("BLACKBOARD", "[BOOT] Invalid enter. Session started automatically in SOLO-PLAYER mode");
             break;
+    }
+
+    printf("\n - - - \n");
+
+    if(network == 1){
+        printf("\nSelect the game mode:\n");
+        printf("> '1' for Server\n");
+        printf("> '2' for Client\n");
+        printf("\n> ");
+        int chosenMODE;
+        scanf("%d", &chosenMODE);
+
+        switch (chosenMODE) {
+            case 1: //server
+                mode = MODE_SERVER; 
+                network = 1; //enable network features 
+                log_message("BLACKBOARD", "[BOOT] Session started in SERVER mode");
+                break;
+            case 2:  // CLIENT
+                mode = MODE_CLIENT;
+                network = 1;
+                log_message("BLACKBOARD", "[BOOT] Session started in CLIENT mode");
+                break;
+            default:
+                mode = MODE_SOLO; 
+                log_message("BLACKBOARD", "[BOOT] Invalid input: Session started automatically in SOLO-PLAYER mode");
+                break;
+        }
     }
 
     if (argc == 1) {
@@ -410,11 +450,20 @@ int main(int argc, char *argv[])
     //-NETWORK---------------------------------------------------------------------------------
     //initializate SERVER
     if (mode == MODE_SERVER) { 
+        //create window for waiting client
+        WINDOW *wait_win = NULL;
+        wait_win = show_waiting_client_window();
+
         ctx.role = NET_SERVER;
         ctx.port = DEFAULT_PORT;
 
         // initializate socket
         network_server_init(&ctx);
+        if (wait_win) {
+            delwin(wait_win);
+            clear();
+            refresh();
+        }
 
         // handshake
         if (server_handshake(&ctx) < 0) {

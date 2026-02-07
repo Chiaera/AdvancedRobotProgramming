@@ -1,0 +1,5 @@
+2026-02-07 20:14:36 [BLACKBOARD pid=18169][BOOT] Session started in SERVER mode
+2026-02-07 20:14:36 [BLACKBOARD pid=18169][BOOT] Blackboard awakes
+2026-02-07 20:14:36 [NETWORK pid=18169][SERVER] Socket created
+2026-02-07 20:14:36 [NETWORK pid=18169][SERVER] Bind OK on port 8080
+2026-02-07 20:14:36 [NETWORK pid=18169][SERVER] Listening for client...

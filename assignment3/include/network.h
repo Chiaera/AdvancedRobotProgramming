@@ -3,7 +3,7 @@
 #include <netinet/in.h> 
 #include <arpa/inet.h> 
 #include <sys/socket.h>
-#define DEFAULT_PORT 5252
+#define DEFAULT_PORT 8080
 #define BUFFER_SIZE 256
 
 //------------------------------------------------------------------------STRUCTS
