@@ -450,12 +450,14 @@ int main(int argc, char *argv[])
         refresh();
 
         // handshake
+        log_message("BLACKBOARD", "[SERVER] Start handshake..");
         if (server_handshake(&ctx) < 0) {
             log_message("BLACKBOARD", "[SERVER] Handshake failed");
             goto cleanup;
         }
 
         // send dimension
+        log_message("BLACKBOARD", "[SERVER] Sending dimension..");
         if (send_window_size(&ctx, gs.world_width, gs.world_height) < 0) {
             log_message("BLACKBOARD", "[SERVER] Window size send failed");
             goto cleanup;
@@ -924,6 +926,7 @@ int main(int argc, char *argv[])
             int vx, vy; 
             convert_to_virtual(gs.drone.x, gs.drone.y, &vx, &vy, gs.world_width, gs.world_height, ctx.rotation);
             //send drone position to client
+            log_message("BLACKBOARD", "[SERVER] Sending drone position..");
             if (send_drone_position(&ctx, vx, vy) < 0) {
                 log_message("NETWORK", "ERROR: failed to send drone position");
                 break;
@@ -1002,6 +1005,7 @@ int main(int argc, char *argv[])
                     log_message("NETWORK", "[CLIENT DEBUG] Sending virtual (%d,%d)", dvx, dvy);
 
                     //send coordinate
+                    log_message("BLACKBOARD", "[CLIENT] obstacle position..");
                     if (send_obstacle_position(&ctx, dvx, dvy) < 0) {
                         log_message("NETWORK", "[CLIENT] ERROR: failed to send obstacle");
                         break;

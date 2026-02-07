@@ -141,7 +141,7 @@ int receive_drone_position(NetworkContext *ctx, int *x, int *y){
     }
 
     //parse x and y
-    if (sscanf(buffer, "%d %d", x, y) != 2){
+    if (sscanf(buffer, "%d, %d", x, y) != 2){
         log_message("NETWORK", "[CLIENT] ERROR: invalid drone position coordinates");
         return -1;
     }
@@ -162,7 +162,7 @@ int send_obstacle_position(NetworkContext *ctx, int x, int y){
     char buffer[BUFFER_SIZE];
 
     //send message obstacle position 'x y' 
-    snprintf(buffer, BUFFER_SIZE, "%d %d", x, y);
+    snprintf(buffer, BUFFER_SIZE, "%d, %d", x, y);
     if (send_msg(ctx->connfd, buffer) < 0) {
         log_message("NETWORK", "[CLIENT] ERROR: failed to send obstacle position");
         return -1;

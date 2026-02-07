@@ -147,7 +147,7 @@ int send_drone_position(NetworkContext *ctx, int x, int y){
     if (send_msg(ctx->connfd, "drone") < 0) return -1;
 
     //write drone message
-    snprintf(buffer, BUFFER_SIZE, "%d %d", x, y); 
+    snprintf(buffer, BUFFER_SIZE, "%d, %d", x, y); 
     if (send_msg(ctx->connfd, buffer) < 0) { 
         perror("[SERVER] ERROR sending drone position");
         log_message("NETWORK", "[SERVER] ERROR: drone position send failed");
@@ -184,7 +184,7 @@ int receive_obstacle_position(NetworkContext *ctx, int *x, int *y){
     }
 
     //parse x and y
-    if (sscanf(buffer, "%d %d", x, y) != 2) {
+    if (sscanf(buffer, "%d, %d", x, y) != 2) {
         log_message("NETWORK", "[SERVER] ERROR: failed to parse obstacle position");
         return -1;
     } else {

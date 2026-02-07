@@ -14,14 +14,13 @@
 //--------------------------------------------------------MESSAGE
 //send message
 int send_msg(int fd, const char *msg) {
-    char buffer[BUFFER_SIZE];
-    int len = snprintf(buffer, BUFFER_SIZE, "%s\n", msg);
+    size_t len = strlen(msg) + 1;      
+    size_t total = 0;
 
-    int total = 0; 
     while (total < len) { //write all bytes
-        int n = write(fd, buffer + total, len - total);
+        ssize_t n = write(fd, msg + total, len - total);
         if (n < 0) return -1;
-        total += n;
+        total += (size_t)n;
     }
     return 0;
 }
@@ -31,14 +30,16 @@ int recv_msg(int fd, char *buffer, size_t maxlen) {
     size_t i = 0;
     char c;
 
+    if (maxlen == 0) return -1;
+
     while (i < maxlen - 1) { //read leaving space for null terminator
-        int n = read(fd, &c, 1);
+        ssize_t n = read(fd, &c, 1);
         if(n < 0) return -1; //error
         if (n == 0) return 1; //connection closed
-        if (c == '\n') break;
         buffer[i++] = c;
+        if (c == '\0') break; //terminator
     }
-    buffer[i] = '\0'; //null terminate
+    buffer[maxlen - 1] = '\0'; //null terminate
     return 0;
 }
 
