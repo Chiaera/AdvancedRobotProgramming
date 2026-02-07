@@ -805,6 +805,8 @@ int main(int argc, char *argv[])
             if (ri != sizeof(m)) continue;  //error of reading
               
             if (m.type == 'Q') {
+                if (mode == MODE_SERVER) send_quit(&ctx); //send quit message to client if server mode
+
                 log_message("BLACKBOARD", "Quit: shutting down");
                 
                 //kills exist processes
@@ -840,6 +842,14 @@ int main(int argc, char *argv[])
 
         //SERVER - network communication
         if (mode == MODE_SERVER) {
+
+            //quit 
+            if (g_stop || g_sighup) {
+                log_message("NETWORK", "[SERVER] Sending quit to client");
+                send_quit(&ctx);
+                break;
+            }
+
             ctx.rotation = cfg.rotation; //update the rotation parameter from the config file
             if (cfg.rotation!=0 || cfg.rotation!=90 || cfg.rotation!=180 || cfg.rotation!=270){
                 log_message("BLACKBOARD", "WARNING: invalid rotation value in config, defaulting to 0");
@@ -875,36 +885,57 @@ int main(int argc, char *argv[])
 
         // CLIENT - network communication
         if (mode == MODE_CLIENT) {
-            //receive drone position from server (virtual position)
-            int vx, vy;
-            if (receive_drone_position(&ctx, &vx, &vy) < 0) {
-                log_message("NETWORK", "[CLIENT] ERROR: failed to receive drone position");
+            char header[BUFFER_SIZE];
+
+            //read header
+            if (recv_msg(ctx.connfd, header, BUFFER_SIZE) < 0) {
+                log_message("NETWORK", "[CLIENT] ERROR: failed to receive header"); 
+                break; 
+            }
+
+            //handle message based on header
+            if (strcmp(header, "q") == 0) { //QUIT
+                log_message("NETWORK", "[CLIENT] Quit received from server");
+                receive_quit(&ctx);
+                break;
+            } else if(strcmp(header, "drone") == 0) { //DRONE
+                //receive drone position from server (virtual position)
+                int vx, vy;
+                if (receive_drone_position(&ctx, &vx, &vy) < 0) {
+                    log_message("NETWORK", "[CLIENT] ERROR: failed to receive drone position");
+                    break;
+                }
+
+                //convert position from virtual to real
+                int rx, ry;
+                convert_from_virtual(vx, vy, &rx, &ry, gs.world_width, gs.world_height, ctx.rotation);
+
+                //update the obstacle position
+                gs.num_obstacles = 1;
+                gs.obstacles[0].x = rx;
+                gs.obstacles[0].y = ry;
+
+                //send local obstacle (client drone)
+                int lx = (int)gs.drone.x;
+                int ly = (int)gs.drone.y;
+
+                int lvx, lvy;
+                convert_to_virtual(lx, ly, &lvx, &lvy, gs.world_width, gs.world_height, ctx.rotation);
+
+                if (send_obstacle_position(&ctx, lvx, lvy) < 0) {
+                    log_message("NETWORK", "[CLIENT] ERROR: failed to send obstacle position");
+                    break;
+                }
+
+                //draw map
+                render(&screen, &gs);
+                continue;
+            } else {
+                log_message("NETWORK", "[CLIENT] ERROR: unexpected header '%s'", header);
                 break;
             }
 
-            //convert position from virtual to real
-            int rx, ry;
-            convert_from_virtual(vx, vy, &rx, &ry, gs.world_width, gs.world_height, ctx.rotation);
-
-            //update the obstacle position
-            gs.num_obstacles = 1;
-            gs.obstacles[0].x = rx;
-            gs.obstacles[0].y = ry;
-
-            //send local obstacle (client drone)
-            int lx = (int)gs.drone.x;
-            int ly = (int)gs.drone.y;
-
-            int lvx, lvy;
-            convert_to_virtual(lx, ly, &lvx, &lvy, gs.world_width, gs.world_height, ctx.rotation);
-
-            if (send_obstacle_position(&ctx, lvx, lvy) < 0) {
-                log_message("NETWORK", "[CLIENT] ERROR: failed to send obstacle position");
-                break;
-            }
-
-            //draw map
-            render(&screen, &gs);
+            
         }
 
         if(network==0){
