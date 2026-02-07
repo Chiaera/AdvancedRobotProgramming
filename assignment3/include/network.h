@@ -2,8 +2,8 @@
 #define NETWORK_H 
 #include <netinet/in.h> 
 #include <arpa/inet.h> 
-#include <sys/socket.h> 
-#define DEFAULT_PORT 5555
+#include <sys/socket.h>
+#define DEFAULT_PORT 5252
 #define BUFFER_SIZE 256
 
 //------------------------------------------------------------------------STRUCTS
