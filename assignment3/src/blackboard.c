@@ -261,6 +261,7 @@ int main(int argc, char *argv[])
     GameMode mode = MODE_SOLO; //default game mode
     int network = 0;
     NetworkContext ctx;
+    memset(&ctx, 0, sizeof(ctx));
 
     printf("Select the game mode:\n");
     printf("> '1' for Solo-player\n");
@@ -306,6 +307,13 @@ int main(int argc, char *argv[])
     //parameters -------------------------------------------------------------------
     Config cfg;
     load_config("bin/parameters.config", &cfg);
+    switch (cfg.rotation) {
+        case 0:   ctx.rotation = ROT_0; break;
+        case 90:  ctx.rotation = ROT_90; break;
+        case 180: ctx.rotation = ROT_180; break;
+        case 270: ctx.rotation = ROT_270; break;
+        default:  ctx.rotation = ROT_0; break;
+    }
 
     if(network==0) {
         log_message("BLACKBOARD", "[BOOT] Config loaded: %dx%d world, %d obstacles, %d targets",
@@ -941,6 +949,7 @@ int main(int argc, char *argv[])
                     convert_from_virtual(vx, vy, &rx, &ry, gs.world_width, gs.world_height, ctx.rotation);
 
                     //update obstacle position
+                    gs.num_obstacles = 1;
                     gs.obstacles[0].x = rx;
                     gs.obstacles[0].y = ry;
 
