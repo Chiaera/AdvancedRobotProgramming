@@ -261,51 +261,15 @@ int main(int argc, char *argv[])
             break;
         case 2: //server
             mode = MODE_SERVER; 
-            log_message("BLACKBOARD", "[BOOT] Session started in SERVER mode");
             network = 1; //enable network features 
+            log_message("BLACKBOARD", "[BOOT] Session started in SERVER mode");
             break;
         case 3:  // CLIENT
             mode = MODE_CLIENT;
-            log_message("BLACKBOARD", "[BOOT] Session started in CLIENT mode");
             network = 1;
-
-            char ip_address[64];
-
-            while (1){
-                clear();
-                mvprintw(5, 2, "CLIENT MODE");
-                mvprintw(7, 2, "Insert server IP address:");
-                mvprintw(8, 2, "(Press 's' to switch to SOLO-PLAYER)");
-                mvprintw(10, 2, "> ");
-                refresh();
-
-                echo();
-                getnstr(ip_address, 63);
-                noecho();
-
-                //switch to solo-player
-                if (strcmp(ip_address, "s") == 0 || strcmp(ip_address, "S") == 0) {
-                    mode = MODE_SOLO;
-                    log_message("BLACKBOARD", "[BOOT] Switched to SOLO-PLAYER mode");
-                    break;
-                }
-
-                //validate IP length
-                if (strlen(ip_address) < 7 || strlen(ip_address) > 63) {
-                    mvprintw(12, 2, "Invalid IP. Press any key to retry.");
-                    getch();
-                    continue;
-                }
-
-                //save the IP address
-                strcpy(ctx.server_ip, ip_address);
-                log_message("BLACKBOARD", "[BOOT] Attempting to connect to server at %s", ip_address);
-                break;
-            }
-
-        break;
+            log_message("BLACKBOARD", "[BOOT] Session started in CLIENT mode");
+            break;
     }
-
 
     if (argc == 1) {
         printf("--help to see the help commands\n");
@@ -352,6 +316,37 @@ int main(int argc, char *argv[])
     noecho();
     curs_set(0);
     srand(time(NULL));
+
+    if (mode == MODE_CLIENT) {
+        char ip_address[64];
+
+        while (1) {
+            clear();
+            mvprintw(5, 2, "CLIENT MODE");
+            mvprintw(7, 2, "Insert server IP address:");
+            mvprintw(8, 2, "(Press 's' to switch to SOLO-PLAYER)");
+            mvprintw(10, 2, "> ");
+            refresh();
+
+            echo();
+            getnstr(ip_address, 63);
+            noecho();
+
+            if (strcmp(ip_address, "s") == 0 || strcmp(ip_address, "S") == 0) {
+                mode = MODE_SOLO;
+                break;
+            }
+
+            if (strlen(ip_address) < 7 || strlen(ip_address) > 63) {
+                mvprintw(12, 2, "Invalid IP. Press any key to retry.");
+                getch();
+                continue;
+            }
+
+            strcpy(ctx.server_ip, ip_address);
+            break;
+        }
+    }
 
     //create windows ----------------------------------------------------------------
     Screen screen; //initialize the screen 
