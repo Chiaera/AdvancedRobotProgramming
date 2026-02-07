@@ -941,7 +941,6 @@ int main(int argc, char *argv[])
                     convert_from_virtual(vx, vy, &rx, &ry, gs.world_width, gs.world_height, ctx.rotation);
 
                     //update obstacle position
-                    gs.num_obstacles = 1;
                     gs.obstacles[0].x = rx;
                     gs.obstacles[0].y = ry;
 
