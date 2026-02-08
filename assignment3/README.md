@@ -251,11 +251,11 @@ The client-server protocol used **TPC socket** to implements **sequential handsh
    ```
    The connection continues only if the client replies correctly.
 
-2. ### Exchange information about the world size
+2. ### World Configuration Excahnge
    The server communicates its world dimensions so the client can verify compatibility.
    ```
    SERVER → CLIENT: "size width height"       
-   CLIENT → SERVER: "sok w x h"     
+   CLIENT → SERVER: "sok"     
    ```
    The server checks only that the reply begins with `"sok"`.
 
