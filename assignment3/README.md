@@ -295,7 +295,7 @@ To support different orientations between peers, coordinates can be exchanged in
 ---
 
 ## Game mode
-The simulator can be run in four different modes: **server**, **client**, **peer-to-peer** and **solo-player**.
+The simulator can be run in four different modes: **server**, **client** and **solo-player**.
 The mode is selected through menu at the beginning of the simulation.
 | Mode | Configuration | Description |
 |------|---------------|-------------|
