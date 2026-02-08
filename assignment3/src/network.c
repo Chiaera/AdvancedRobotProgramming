@@ -37,7 +37,7 @@ int recv_msg(int fd, char *buffer, size_t maxlen) {
         if(n < 0) return -1; //error
         if (n == 0) return 1; //connection closed
         buffer[i++] = c;
-        if (c == '\0') break; //terminator
+        if (c=='\0') break; //terminator
     }
     buffer[maxlen - 1] = '\0'; //null terminate
     return 0;
