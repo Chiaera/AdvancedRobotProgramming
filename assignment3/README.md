@@ -1,4 +1,4 @@
-# Assignment 3 - DA CAMBIARE PROTOCOLLO E STRUTTURA DIRECTORY
+# Assignment 3
 
 This project implements an **interactive multi‑process drone simulator** based on a **Blackboard architecture**. 
 Multiple autonomous processes communicate asynchronously with a central server using POSIX pipes, while a watchdog monitors the system through shared memory and semaphores. The project implemented a `protocol` to allow the interaction with other projects. 
