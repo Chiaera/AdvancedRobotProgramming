@@ -165,7 +165,7 @@ int send_drone_position(NetworkContext *ctx, int x, int y){
         return -1;
     }
 
-    log_message("NETWORK", "[SERVER] Sending drone position: %d %d", x, y);
+    log_message("NETWORK", "[SERVER] Sending drone position: %d, %d", x, y);
     return 0;
 }
 
@@ -195,7 +195,7 @@ int receive_obstacle_position(NetworkContext *ctx, int *x, int *y){
         }
     }
 
-    log_message("NETWORK", "[SERVER] Received obstacle: %d %d", *x, *y);
+    log_message("NETWORK", "[SERVER] Received obstacle: %d, %d", *x, *y);
     return 0;
 }
 

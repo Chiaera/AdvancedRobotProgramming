@@ -111,7 +111,7 @@ int receive_window_size(NetworkContext *ctx, int *W, int *H) {
     }
 
     int w, h;
-    if (sscanf(buffer, "size %d %d", &w, &h) != 2) { //check message format
+    if (sscanf(buffer, "size %d, %d", &w, &h) != 2) { //check message format
         log_message("NETWORK", "[CLIENT] ERROR: invalid size message '%s'", buffer);
         return -1;
     }

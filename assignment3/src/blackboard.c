@@ -246,6 +246,27 @@ int print_final_win(GameState *gs, pid_t pid_watchdog) {
     return 1; //signal to stop the main loop
 }
 
+void print_mode(Screen *s, GameMode mode) {
+    const char *label = NULL;
+
+    switch (mode) {
+        case MODE_SERVER: label = "[ SERVER MODE ]"; break;
+        case MODE_CLIENT: label = "[ CLIENT MODE ]"; break;
+        case MODE_SOLO:   label = "[ SOLO MODE ]";   break;
+        default:          return;
+    }
+
+    int y = s->starty + s->height;
+    int x = s->startx + (s->width - strlen(label)) / 2;
+
+    attron(A_BOLD | COLOR_PAIR(4));
+    mvprintw(y, x, "%s", label);
+    attroff(A_BOLD | COLOR_PAIR(4));
+
+    refresh();
+}
+
+
 
 //message type for the comunication server-client
 MsgType parse_message_type(const char *s) {
@@ -406,7 +427,8 @@ int main(int argc, char *argv[])
 
     //create windows ----------------------------------------------------------------
     Screen screen; //initialize the screen 
-    init_screen(&screen);
+    init_screen(&screen, network);
+    print_mode(&screen, mode);
 
     //create the inspection window
     WINDOW *info_win = newwin(8, 40, 0, 2); //info window
@@ -450,14 +472,12 @@ int main(int argc, char *argv[])
         refresh();
 
         // handshake
-        log_message("BLACKBOARD", "[SERVER] Start handshake..");
         if (server_handshake(&ctx) < 0) {
             log_message("BLACKBOARD", "[SERVER] Handshake failed");
             goto cleanup;
         }
 
         // send dimension
-        log_message("BLACKBOARD", "[SERVER] Sending dimension..");
         if (send_window_size(&ctx, gs.world_width, gs.world_height) < 0) {
             log_message("BLACKBOARD", "[SERVER] Window size send failed");
             goto cleanup;
@@ -926,7 +946,6 @@ int main(int argc, char *argv[])
             int vx, vy; 
             convert_to_virtual(gs.drone.x, gs.drone.y, &vx, &vy, gs.world_width, gs.world_height, ctx.rotation);
             //send drone position to client
-            log_message("BLACKBOARD", "[SERVER] Sending drone position..");
             if (send_drone_position(&ctx, vx, vy) < 0) {
                 log_message("NETWORK", "ERROR: failed to send drone position");
                 break;
@@ -1005,7 +1024,6 @@ int main(int argc, char *argv[])
                     log_message("NETWORK", "[CLIENT DEBUG] Sending virtual (%d,%d)", dvx, dvy);
 
                     //send coordinate
-                    log_message("BLACKBOARD", "[CLIENT] obstacle position..");
                     if (send_obstacle_position(&ctx, dvx, dvy) < 0) {
                         log_message("NETWORK", "[CLIENT] ERROR: failed to send obstacle");
                         break;
@@ -1087,9 +1105,10 @@ int main(int argc, char *argv[])
 
         //resize
         if (LINES != old_lines || COLS != old_cols) {
-        old_lines = LINES;
-        old_cols  = COLS;
-        refresh_screen(&screen);
+            old_lines = LINES;
+            old_cols  = COLS;
+            refresh_screen(&screen, network);
+            print_mode(&screen, mode);
         }
 
         drone_target_collide(&gs); //manages the collision

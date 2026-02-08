@@ -136,8 +136,8 @@ typedef struct {
 
 //------------------------------------------------------------------------FUNCTIONS
 
-void init_screen(Screen *s);
-void refresh_screen(Screen *s);
+void init_screen(Screen *s, int netMode);
+void refresh_screen(Screen *s, int netMode);
 void init_game(GameState *g, Config *cfg);
 void render(Screen *s, GameState *g);
 

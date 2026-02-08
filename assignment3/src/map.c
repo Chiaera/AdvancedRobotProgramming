@@ -25,18 +25,41 @@ void destroy_win(WINDOW *local_win){
 }
 
 // initializate the window dimension
-void init_screen(Screen*s){
-    s-> starty = 14;
-    s-> startx = 1;
-    s-> height = LINES-s -> starty-1;
-    s-> width = COLS-2;
+void init_screen(Screen*s, int netMode){
+    if(netMode){ //server and client
+        s->height = (LINES > 6) ? (LINES - 6) : (LINES - 2);
+        s->width  = (COLS  > 10) ? (COLS - 10) : (COLS - 2);
+
+        if (s->height < 3) s->height = LINES - 2;
+        if (s->width  < 3) s->width  = COLS - 2;
+
+        s->starty = (LINES - s->height) / 2;
+        s->startx = (COLS  - s->width)  / 2;
+    } else { //soloplayer
+        s-> starty = 14;
+        s-> startx = 1;
+        s-> height = LINES-s -> starty-1;
+        s-> width = COLS-2;
+    }
+    
     s-> win = create_newwin(s->height, s->width, s->starty, s->startx);
 }
 
 // resize - re-draw the window
-void refresh_screen(Screen *s) { 
-    s->height = LINES-s -> starty-1; //re-define the border
-    s->width  = COLS-2;
+void refresh_screen(Screen *s, int netMode) { 
+    if (netMode) {
+        s->height = (LINES > 6) ? (LINES - 6) : (LINES - 2);
+        s->width  = (COLS  > 10) ? (COLS - 10) : (COLS - 2);
+
+        if (s->height < 3) s->height = LINES - 2;
+        if (s->width  < 3) s->width  = COLS - 2;
+
+        s->starty = (LINES - s->height) / 2;
+        s->startx = (COLS  - s->width)  / 2;
+    } else {
+        s->height = LINES - s->starty - 1; //re-define the border
+        s->width  = COLS - 2;
+    }
 
     destroy_win(s->win); //destroy the window
     s->win = create_newwin(s->height, s->width, s->starty, s->startx); //draw the window with the new dimensions
