@@ -319,7 +319,7 @@ All network service used the defaulto port **8080** (`DAFAULT_PORT`).
 
 ---
 
-## Project Structure -> DA CAMBIARE
+## Project Structure
 The project is structured as follows:
 ```bash
 assignment3 
