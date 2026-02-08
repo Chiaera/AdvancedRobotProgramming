@@ -470,6 +470,7 @@ int main(int argc, char *argv[])
         
         clear();
         refresh();
+        print_mode(&screen, mode);
 
         // handshake
         if (server_handshake(&ctx) < 0) {
