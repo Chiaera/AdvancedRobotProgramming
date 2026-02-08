@@ -371,6 +371,7 @@ assignment3
 If they are not installed you can run this code
 ```
 sudo apt install gcc
+sudo apt install make
 sudo apt-get install libncurses5-dev libncursesw5-dev
 sudo apt install konsole
 ```
